@@ -95,9 +95,15 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
   return (
     <div
       className={`fixed inset-0 flex flex-col items-center justify-center z-[9999] transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
-      style={{ background: 'linear-gradient(135deg, hsl(220, 60%, 8%), hsl(260, 50%, 12%))' }}
+      style={{
+        backgroundImage: 'url(/wallpapers/mountain-sunset.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
       onClick={() => { if (!showInput) setShowInput(true); }}
     >
+      {/* Overlay for readability */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       {/* Time */}
       <div className="animate-boot-in flex flex-col items-center gap-2 mb-12">
         <h1 className="text-7xl font-light tracking-tight" style={{ color: 'hsl(210, 20%, 92%)' }}>

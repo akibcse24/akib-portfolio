@@ -14,7 +14,12 @@ interface AppBrowserProps {
   initialUrl?: string;
 }
 
-const HOMEPAGE = 'https://www.google.com';
+type SearchEngine = 'google' | 'duckduckgo';
+const SEARCH_ENGINES: Record<SearchEngine, { name: string; url: string; searchUrl: string }> = {
+  google: { name: 'Google', url: 'https://www.google.com', searchUrl: 'https://www.google.com/search?q=' },
+  duckduckgo: { name: 'DuckDuckGo', url: 'https://duckduckgo.com', searchUrl: 'https://duckduckgo.com/?q=' },
+};
+const SEARCH_ENGINE_KEY = 'akibos-search-engine';
 const BOOKMARKS_KEY = 'akibos-browser-bookmarks';
 
 let tabCounter = 0;
