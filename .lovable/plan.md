@@ -1,73 +1,39 @@
 
 
-# AkibOS — Advanced Enhancements
+# AkibOS — Fix iframe blocking, merge dock into taskbar, auto-hide taskbar
 
-## Planned Improvements
+## Three Changes
 
-### 1. Right-Click Desktop Context Menu
-- Right-click on desktop background shows a context menu with: Change Wallpaper, Refresh Desktop, About AkibOS
-- Clicking outside or selecting an option closes it
-- Styled to match KDE Plasma aesthetic (blur, dark panel)
+### 1. Fix rt.akib.qzz.io iframe blocking
+**Problem**: `rt.akib.qzz.io` sends `X-Frame-Options: DENY` or `Content-Security-Policy: frame-ancestors 'none'`, which blocks iframe embedding. This is a server-side header — it cannot be bypassed from the client.
 
-### 2. Window Snapping (Edge Snap Zones)
-- Dragging a window to the left/right edge snaps it to half-screen
-- Dragging to top edge maximizes the window
-- Visual preview overlay appears when dragging near edges
-- Double-click title bar to maximize/restore
+**Solution**: Use a CORS/frame proxy. When a site refuses to load in an iframe, route it through a public proxy like `https://corsproxy.io/?url=` or alternatively detect the load failure and open the site in a new browser tab instead. The most reliable approach:
+- Add an `onError` / load-failure detection in `AppBrowser.tsx`
+- For known blocked sites, prepend a proxy URL **or** show a fallback UI with a "Open in new tab" button
+- Update `os-apps.ts` to flag apps that need proxy or external opening
 
-### 3. Notification System & System Tray
-- Add a notification center in the taskbar (bell icon)
-- Show welcome notification on desktop load: "Welcome to AkibOS"
-- Clicking volume/wifi icons shows small popup panels (mock controls)
-- Battery indicator icon in system tray
+**Recommended approach**: Since proxy services can be unreliable, the cleanest solution is to detect iframe load failure and show a styled fallback page with the app's logo, description, and an "Open in New Tab" button. This is more robust than depending on a third-party proxy.
 
-### 4. Lock Screen
-- After boot, show a lock screen with the user name "Akib" and a "Login" button (no real auth)
-- Animated clock display on the lock screen
-- Smooth transition from lock screen to desktop
+### 2. Merge Dock into Taskbar
+- Remove the separate floating `Dock` component from `Desktop.tsx`
+- Move the dock app icons (with hover magnification) into the center of the `Taskbar`, between the Start button and the system tray
+- The window tabs move to a secondary row or are replaced by dot indicators under the dock icons when that app's window is open
+- Keep the magnification hover effect on the dock icons within the taskbar
 
-### 5. Enhanced Boot Screen
-- Add scrolling terminal-style log lines behind the progress bar (e.g., "[OK] Starting kernel...", "[OK] Mounting filesystem...")
-- Makes the boot feel more realistic and immersive
+### 3. Auto-hide Taskbar when a window is maximized
+- In `Desktop.tsx`, track whether any window is maximized (not minimized)
+- When a window is maximized/fullscreen, the taskbar slides down off-screen with a CSS transition
+- Moving the mouse to the very bottom of the screen reveals the taskbar (hover zone)
+- When no windows are maximized, the taskbar stays visible normally
 
-### 6. App Dock / Quick Launch
-- Add a centered dock at the bottom (above taskbar) with pinned favorite apps — similar to KDE's floating dock or macOS dock
-- Hover magnification effect on dock icons
+## Files to Change
 
-### 7. Desktop Widget — Clock & Weather
-- Floating clock/date widget on the desktop (top-right corner)
-- Minimal, translucent design with current time, day, and a greeting message
-
-### 8. Improved Window Animations
-- Minimize animation: window shrinks and slides down to its taskbar button position
-- Close animation: scale down + fade out before removing
-- Window shadow intensifies on focus
-
-### 9. Keyboard Shortcuts
-- `Super` key toggles Start Menu
-- `Alt+F4` closes focused window
-- `Alt+Tab` cycles through open windows with a visual switcher overlay
-
-### 10. Sound Effects (Optional, Subtle)
-- Short boot chime when boot completes
-- Subtle click sounds on window open/close (using Web Audio API, no external files)
-
----
-
-## Technical Approach
-
-| Feature | Files Modified/Created |
+| File | Change |
 |---|---|
-| Context Menu | `Desktop.tsx` (add right-click handler + menu component) |
-| Window Snapping | `useWindowManager.ts`, `Window.tsx`, `Desktop.tsx` (snap zones overlay) |
-| Notifications | New `NotificationCenter.tsx`, `Taskbar.tsx` |
-| Lock Screen | New `LockScreen.tsx`, `Index.tsx` (add phase) |
-| Enhanced Boot | `BootScreen.tsx` (add log lines) |
-| Dock | New `Dock.tsx`, `Desktop.tsx` |
-| Desktop Widget | New `DesktopWidget.tsx`, `Desktop.tsx` |
-| Window Animations | `Window.tsx`, `index.css` (new keyframes) |
-| Keyboard Shortcuts | `Desktop.tsx` (useEffect with keydown listener) |
-| Sound Effects | `BootScreen.tsx`, `Window.tsx` (Web Audio API) |
-
-All changes use existing tech stack (React, Tailwind, Lucide icons). No new dependencies needed.
+| `src/components/os/AppBrowser.tsx` | Add iframe error detection, show fallback UI with "Open in New Tab" for blocked sites |
+| `src/lib/os-apps.ts` | Add optional `iframeBlocked` flag to OsApp for known blocked sites |
+| `src/components/os/Taskbar.tsx` | Integrate dock icons with magnification into the center; accept `onLaunchApp` prop; add auto-hide logic via `hidden` prop |
+| `src/components/os/Dock.tsx` | Remove (no longer needed as separate component) |
+| `src/components/os/Desktop.tsx` | Remove `<Dock>`, pass `onLaunchApp` to Taskbar, compute `hasMaximizedWindow` for auto-hide, add bottom hover zone to reveal taskbar |
+| `src/components/os/Window.tsx` | Update maximized height from `calc(100% - 48px)` to `100%` when taskbar is hidden |
 
