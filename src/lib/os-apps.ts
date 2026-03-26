@@ -1,15 +1,15 @@
 export interface OsApp {
   id: string;
   name: string;
-  icon: string; // lucide icon name
+  icon: string;
   iconColor: string;
   iconBg: string;
-  iconImage?: string; // URL to actual logo image
+  iconImage?: string;
   type: 'browser' | 'native';
   url?: string;
   description?: string;
   desktopShortcut?: boolean;
-  iframeBlocked?: boolean; // true if the site blocks iframe embedding
+  iframeBlocked?: boolean;
 }
 
 export const osApps: OsApp[] = [
@@ -59,6 +59,24 @@ export const osApps: OsApp[] = [
     type: 'browser',
     url: 'https://www.google.com',
     description: 'Web Browser',
+  },
+  {
+    id: 'calculator',
+    name: 'Calculator',
+    icon: 'Calculator',
+    iconColor: '#f97316',
+    iconBg: 'linear-gradient(135deg, #7c2d12, #f97316)',
+    type: 'native',
+    description: 'Calculator',
+  },
+  {
+    id: 'music-player',
+    name: 'Music',
+    icon: 'Music',
+    iconColor: '#ec4899',
+    iconBg: 'linear-gradient(135deg, #831843, #ec4899)',
+    type: 'native',
+    description: 'Music Player',
   },
   {
     id: 'file-manager',
