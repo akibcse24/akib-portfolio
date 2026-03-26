@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { X, Minus, Maximize2, Minimize2, Expand } from 'lucide-react';
 import type { WindowState } from '@/hooks/useWindowManager';
 import { playClickSound, playCloseSound } from '@/lib/sounds';
@@ -29,6 +29,16 @@ const Window = ({ win, children, taskbarHidden, onClose, onMinimize, onMaximize,
     setClosing(true);
     setTimeout(onClose, 200);
   }, [onClose]);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const el = windowRef.current;
+    if (!el) return;
+    const handler = () => { if (!document.fullscreenElement) setIsFullscreen(false); };
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
 
   const handleFullscreen = useCallback(() => {
     if (!windowRef.current) return;
