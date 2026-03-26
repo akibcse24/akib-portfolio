@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Monitor, Palette, Info, User, HardDrive, Keyboard } from 'lucide-react';
 import { vfs } from '@/lib/virtual-fs';
+import { saveOsData } from '@/lib/os-persistence';
 
 export interface Wallpaper {
   name: string;
@@ -36,12 +37,19 @@ const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) =>
   const handleUsernameChange = (name: string) => {
     setUsername(name);
     localStorage.setItem('akibos-username', name);
+    saveOsData('settings', { username: name, accentHue, wallpaperIndex });
   };
 
   const handleAccentChange = (hue: number) => {
     setAccentHue(hue);
     localStorage.setItem('akibos-accent-hue', String(hue));
     document.documentElement.style.setProperty('--os-accent-hue', String(hue));
+    saveOsData('settings', { username, accentHue: hue, wallpaperIndex });
+  };
+
+  const handleWallpaperChange = (index: number) => {
+    onWallpaperChange(index);
+    saveOsData('settings', { username, accentHue, wallpaperIndex: index });
   };
 
   const stats = vfs.getStats();
@@ -53,6 +61,7 @@ const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) =>
     { keys: 'Tab', action: 'Autocomplete (Terminal)' },
     { keys: 'Escape', action: 'Close menu / dialog' },
     { keys: 'Super / Meta', action: 'Toggle Start Menu' },
+    { keys: 'F11', action: 'Toggle fullscreen' },
   ];
 
   const tabs = [
@@ -89,7 +98,7 @@ const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) =>
               {wallpapers.map((wp, i) => (
                 <button
                   key={i}
-                  onClick={() => onWallpaperChange(i)}
+                  onClick={() => handleWallpaperChange(i)}
                   className={`h-16 rounded-lg border-2 transition-all overflow-hidden ${i === wallpaperIndex ? 'border-os-accent shadow-lg' : 'border-transparent hover:border-white/20'}`}
                   style={wp.type === 'image'
                     ? { backgroundImage: `url(${wp.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -149,6 +158,7 @@ const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) =>
                 <div className="text-[10px] opacity-50 text-os-window-body-foreground">KB Used</div>
               </div>
             </div>
+            <p className="text-[10px] text-os-window-body-foreground/50">Data is synced to the cloud automatically.</p>
             <button
               onClick={() => { vfs.reset(); }}
               className="px-3 py-2 rounded text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
@@ -193,6 +203,7 @@ const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) =>
               <p>Kernel: Browser Engine</p>
               <p>Architecture: WebAssembly-compatible</p>
               <p>User: {username}</p>
+              <p>Cloud: Connected ☁️</p>
             </div>
           </div>
         )}
