@@ -107,10 +107,14 @@ const Desktop = () => {
 
   const wp = wallpapers[wallpaperIndex];
 
+  const bgStyle: React.CSSProperties = wp.type === 'image'
+    ? { backgroundImage: `url(${wp.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { background: `linear-gradient(135deg, hsl(${wp.from}), hsl(${wp.to}))` };
+
   return (
     <div
       className="fixed inset-0 flex flex-col overflow-hidden select-none"
-      style={{ background: `linear-gradient(135deg, hsl(${wp.from}), hsl(${wp.to}))` }}
+      style={bgStyle}
       onContextMenu={handleContextMenu}
       onClick={() => { setContextMenu(null); setStartMenuOpen(false); }}
     >
