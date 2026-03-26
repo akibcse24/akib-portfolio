@@ -5,10 +5,11 @@ interface AppIconProps {
   iconName: string;
   iconColor: string;
   iconBg: string;
+  iconImage?: string;
   onDoubleClick: () => void;
 }
 
-const AppIcon = ({ name, iconName, iconColor, iconBg, onDoubleClick }: AppIconProps) => {
+const AppIcon = ({ name, iconName, iconColor, iconBg, iconImage, onDoubleClick }: AppIconProps) => {
   const LucideIcon = (icons as any)[iconName];
 
   return (
@@ -17,10 +18,14 @@ const AppIcon = ({ name, iconName, iconColor, iconBg, onDoubleClick }: AppIconPr
       onDoubleClick={onDoubleClick}
     >
       <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-150"
-        style={{ background: iconBg }}
+        className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-150 overflow-hidden"
+        style={{ background: iconImage ? 'transparent' : iconBg }}
       >
-        {LucideIcon && <LucideIcon size={24} color={iconColor} />}
+        {iconImage ? (
+          <img src={iconImage} alt={name} className="w-full h-full object-contain" />
+        ) : (
+          LucideIcon && <LucideIcon size={24} color={iconColor} />
+        )}
       </div>
       <span className="text-[11px] text-center leading-tight font-medium drop-shadow-md" style={{ color: 'hsl(210, 20%, 92%)' }}>
         {name}
