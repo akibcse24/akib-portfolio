@@ -6,7 +6,7 @@ import AppBrowser from './AppBrowser';
 import AppFileManager from './AppFileManager';
 import AppTerminal from './AppTerminal';
 import AppTextEditor from './AppTextEditor';
-import AppSettings, { wallpapers } from './AppSettings';
+import AppSettings, { wallpapers, type Wallpaper } from './AppSettings';
 import Taskbar from './Taskbar';
 import DesktopWidget from './DesktopWidget';
 import NotificationCenter, { useNotifications } from './NotificationCenter';
