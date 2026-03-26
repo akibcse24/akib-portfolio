@@ -1,74 +1,73 @@
 
 
-# AkibOS — Web Desktop Environment
+# AkibOS — Advanced Enhancements
 
-## Overview
-A web-based operating system with a KDE Plasma-inspired desktop, 3-second boot animation, and three app shortcuts that open in a built-in browser. Includes extra apps (file manager, terminal, settings, text editor).
+## Planned Improvements
 
-## OS Name & Branding
-- **Name**: AkibOS
-- **Boot screen**: Animated logo with progress bar, completes in ~3 seconds
+### 1. Right-Click Desktop Context Menu
+- Right-click on desktop background shows a context menu with: Change Wallpaper, Refresh Desktop, About AkibOS
+- Clicking outside or selecting an option closes it
+- Styled to match KDE Plasma aesthetic (blur, dark panel)
 
-## Desktop Apps (Shortcuts)
+### 2. Window Snapping (Edge Snap Zones)
+- Dragging a window to the left/right edge snaps it to half-screen
+- Dragging to top edge maximizes the window
+- Visual preview overlay appears when dragging near edges
+- Double-click title bar to maximize/restore
 
-| Icon | Name | URL |
-|------|------|-----|
-| Canvas/nodes icon | CtxNote | cn.akib.qzz.io |
-| Chart/target icon | RT - Routine Tracker | rt.akib.qzz.io |
-| Wallet/ledger icon | Hisabkhata | hk.akib.qzz.io |
+### 3. Notification System & System Tray
+- Add a notification center in the taskbar (bell icon)
+- Show welcome notification on desktop load: "Welcome to AkibOS"
+- Clicking volume/wifi icons shows small popup panels (mock controls)
+- Battery indicator icon in system tray
 
-All icons will be custom SVG — no copyrighted logos.
+### 4. Lock Screen
+- After boot, show a lock screen with the user name "Akib" and a "Login" button (no real auth)
+- Animated clock display on the lock screen
+- Smooth transition from lock screen to desktop
 
-## Architecture
+### 5. Enhanced Boot Screen
+- Add scrolling terminal-style log lines behind the progress bar (e.g., "[OK] Starting kernel...", "[OK] Mounting filesystem...")
+- Makes the boot feel more realistic and immersive
 
-```text
-src/
-├── pages/Index.tsx          — Entry: boot → desktop state machine
-├── components/os/
-│   ├── BootScreen.tsx       — Logo animation + progress bar (3s)
-│   ├── Desktop.tsx          — Wallpaper, icons grid, right-click menu
-│   ├── Taskbar.tsx          — Bottom panel: start menu, clock, system tray
-│   ├── StartMenu.tsx        — App launcher (KDE Plasma style)
-│   ├── Window.tsx           — Draggable/resizable window container
-│   ├── WindowManager.tsx    — Manages open windows, z-index, minimize/maximize
-│   ├── AppBrowser.tsx       — In-OS browser with URL bar, back/forward, iframe
-│   ├── AppFileManager.tsx   — Simple file browser UI
-│   ├── AppTerminal.tsx      — Fake terminal with basic commands
-│   ├── AppTextEditor.tsx    — Simple text editor
-│   ├── AppSettings.tsx      — Theme/wallpaper settings
-│   └── AppIcon.tsx          — Desktop icon component
-├── hooks/
-│   └── useWindowManager.ts  — Window state management hook
-└── lib/
-    └── os-apps.ts           — App registry (names, icons, components)
-```
+### 6. App Dock / Quick Launch
+- Add a centered dock at the bottom (above taskbar) with pinned favorite apps — similar to KDE's floating dock or macOS dock
+- Hover magnification effect on dock icons
 
-## Key Features
+### 7. Desktop Widget — Clock & Weather
+- Floating clock/date widget on the desktop (top-right corner)
+- Minimal, translucent design with current time, day, and a greeting message
 
-1. **Boot Screen** — AkibOS logo fades in, progress bar fills over 3s, then transitions to desktop. Auto-enters fullscreen via Fullscreen API.
+### 8. Improved Window Animations
+- Minimize animation: window shrinks and slides down to its taskbar button position
+- Close animation: scale down + fade out before removing
+- Window shadow intensifies on focus
 
-2. **Desktop** — KDE Plasma aesthetic: gradient wallpaper, desktop icons in a grid, right-click context menu (change wallpaper, new folder, refresh).
+### 9. Keyboard Shortcuts
+- `Super` key toggles Start Menu
+- `Alt+F4` closes focused window
+- `Alt+Tab` cycles through open windows with a visual switcher overlay
 
-3. **Taskbar** — Bottom panel with: Start/app menu button, open window tabs, system tray (volume, wifi icons), digital clock with date.
+### 10. Sound Effects (Optional, Subtle)
+- Short boot chime when boot completes
+- Subtle click sounds on window open/close (using Web Audio API, no external files)
 
-4. **Window Manager** — Windows are draggable, resizable, minimizable, maximizable, closable. Click to focus (z-index management). Minimize sends to taskbar.
+---
 
-5. **Built-in Browser** — URL bar, back/forward/refresh buttons, renders sites via iframe. The 3 project shortcuts open their URLs here.
+## Technical Approach
 
-6. **Extra Apps** — File Manager (mock file tree), Terminal (fake shell with `help`, `ls`, `whoami`, `clear`), Text Editor (textarea-based), Settings (wallpaper picker, theme toggle).
+| Feature | Files Modified/Created |
+|---|---|
+| Context Menu | `Desktop.tsx` (add right-click handler + menu component) |
+| Window Snapping | `useWindowManager.ts`, `Window.tsx`, `Desktop.tsx` (snap zones overlay) |
+| Notifications | New `NotificationCenter.tsx`, `Taskbar.tsx` |
+| Lock Screen | New `LockScreen.tsx`, `Index.tsx` (add phase) |
+| Enhanced Boot | `BootScreen.tsx` (add log lines) |
+| Dock | New `Dock.tsx`, `Desktop.tsx` |
+| Desktop Widget | New `DesktopWidget.tsx`, `Desktop.tsx` |
+| Window Animations | `Window.tsx`, `index.css` (new keyframes) |
+| Keyboard Shortcuts | `Desktop.tsx` (useEffect with keydown listener) |
+| Sound Effects | `BootScreen.tsx`, `Window.tsx` (Web Audio API) |
 
-## Technical Details
-
-- **State machine**: `booting` → `desktop` managed in Index.tsx
-- **Fullscreen**: `document.documentElement.requestFullscreen()` called after boot completes
-- **Window state**: Custom hook tracking `{id, title, x, y, width, height, minimized, maximized, zIndex}[]`
-- **Dragging/resizing**: Mouse event handlers on window title bar and edges
-- **Styling**: Tailwind + CSS variables for KDE Plasma look (blur effects, rounded panels, subtle shadows)
-- **Icons**: Lucide icons styled as app icons with custom colors
-- **Clock**: `setInterval` updating every second
-
-## Design System Additions
-- New CSS variables for OS-specific colors (panel background, window chrome, desktop gradient)
-- Backdrop blur on panels and window title bars
-- Custom animations: boot fade, window open/close scale, minimize slide
+All changes use existing tech stack (React, Tailwind, Lucide icons). No new dependencies needed.
 
