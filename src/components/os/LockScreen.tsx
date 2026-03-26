@@ -105,7 +105,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
       {/* Overlay for readability */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       {/* Time */}
-      <div className="animate-boot-in flex flex-col items-center gap-2 mb-12">
+      <div className="relative z-10 animate-boot-in flex flex-col items-center gap-2 mb-12">
         <h1 className="text-7xl font-light tracking-tight" style={{ color: 'hsl(210, 20%, 92%)' }}>
           {formatTime(time)}
         </h1>
@@ -115,7 +115,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
       </div>
 
       {/* Avatar + name */}
-      <div className="flex flex-col items-center gap-4 mb-6">
+      <div className="relative z-10 flex flex-col items-center gap-4 mb-6">
         <div
           className="w-20 h-20 rounded-full flex items-center justify-center"
           style={{ background: 'linear-gradient(135deg, hsl(217, 91%, 50%), hsl(260, 80%, 55%))' }}
