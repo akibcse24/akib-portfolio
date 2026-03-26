@@ -1,38 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { vfs } from '@/lib/virtual-fs';
+import { eventBus, OS_EVENTS } from '@/lib/event-bus';
 
 const MOTD = `AkibOS Terminal v1.0
 Type 'help' for available commands.\n`;
 
-const commands: Record<string, (args: string[]) => string> = {
-  help: () => `Available commands:
-  help       - Show this message
-  ls         - List files
-  pwd        - Print working directory
-  whoami     - Display current user
-  date       - Show current date/time
-  echo       - Echo text
-  clear      - Clear terminal
-  neofetch   - System info
-  uname      - System name`,
-  ls: () => 'Documents  Pictures  Downloads  .bashrc  .config',
-  pwd: () => '/home/akib',
-  whoami: () => 'akib',
-  date: () => new Date().toString(),
-  echo: (args) => args.join(' '),
-  uname: () => 'AkibOS 1.0 x86_64',
-  neofetch: () => `
-       ___       akib@akibos
-      /   \\      OS: AkibOS 1.0
-     / A   \\     Kernel: web-5.0
-    /  kib   \\   Shell: akibsh 1.0
-   /   OS     \\  DE: Plasma Web
-  /____________\\ CPU: Browser Engine
-                 Memory: ∞ MB`,
-};
-
 const AppTerminal = () => {
   const [lines, setLines] = useState<string[]>([MOTD]);
   const [input, setInput] = useState('');
+  const [cwd, setCwd] = useState('/home/akib');
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
   const [histIdx, setHistIdx] = useState(-1);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -42,9 +18,206 @@ const AppTerminal = () => {
     bottomRef.current?.scrollIntoView();
   }, [lines]);
 
+  const resolvePath = useCallback((p: string): string => {
+    if (p.startsWith('/')) return normalizePath(p);
+    // Handle ~
+    if (p.startsWith('~')) return normalizePath('/home/akib' + p.slice(1));
+    return normalizePath(cwd + '/' + p);
+  }, [cwd]);
+
+  const normalizePath = (p: string): string => {
+    const parts = p.split('/').filter(Boolean);
+    const result: string[] = [];
+    for (const part of parts) {
+      if (part === '.') continue;
+      if (part === '..') { result.pop(); continue; }
+      result.push(part);
+    }
+    return '/' + result.join('/');
+  };
+
+  const getCompletions = useCallback((partial: string): string[] => {
+    const dir = partial.includes('/') ? resolvePath(partial.substring(0, partial.lastIndexOf('/'))) : cwd;
+    const prefix = partial.includes('/') ? partial.substring(partial.lastIndexOf('/') + 1) : partial;
+    const entries = vfs.ls(dir);
+    return entries.filter(e => e.startsWith(prefix));
+  }, [cwd, resolvePath]);
+
+  const executeCommand = useCallback((trimmed: string) => {
+    // Handle output redirection: echo "text" > file.txt
+    let outputFile: string | null = null;
+    let cmdStr = trimmed;
+    if (cmdStr.includes('>')) {
+      const redir = cmdStr.split('>');
+      cmdStr = redir[0].trim();
+      outputFile = redir[1]?.trim() || null;
+    }
+
+    const parts = cmdStr.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+    const cmd = parts[0];
+    const args = parts.slice(1).map(a => a.replace(/^"|"$/g, ''));
+
+    let output = '';
+
+    switch (cmd) {
+      case 'help':
+        output = `Available commands:
+  help       - Show this message
+  ls [path]  - List directory contents
+  cd <path>  - Change directory
+  pwd        - Print working directory
+  cat <file> - Read file contents
+  touch <f>  - Create empty file
+  mkdir <d>  - Create directory
+  rm <path>  - Delete file/folder
+  cp <s> <d> - Copy file to directory
+  mv <s> <d> - Move file to directory
+  echo <txt> - Echo text (supports > redirect)
+  whoami     - Display current user
+  date       - Show current date/time
+  clear      - Clear terminal
+  neofetch   - System info
+  open <app> - Launch an app
+  uname      - System name`;
+        break;
+
+      case 'ls': {
+        const target = args[0] ? resolvePath(args[0]) : cwd;
+        const entries = vfs.readDir(target);
+        if (entries.length === 0 && !vfs.exists(target)) {
+          output = `ls: cannot access '${args[0] || '.'}': No such file or directory`;
+        } else {
+          const showAll = args.includes('-a') || args.includes('-la') || args.includes('-al');
+          const showLong = args.includes('-l') || args.includes('-la') || args.includes('-al');
+          let items = entries;
+          if (!showAll) items = items.filter(e => !e.name.startsWith('.'));
+          if (showLong) {
+            output = items.map(e => {
+              const type = e.type === 'directory' ? 'd' : '-';
+              const size = e.type === 'file' ? String(e.size).padStart(6) : '     -';
+              const date = new Date(e.modifiedAt).toLocaleDateString([], { month: 'short', day: '2-digit' });
+              return `${type}rw-r--r--  ${size}  ${date}  ${e.name}`;
+            }).join('\n');
+          } else {
+            output = items.map(e => e.type === 'directory' ? `\x1b[1m${e.name}/\x1b[0m` : e.name).join('  ');
+          }
+        }
+        break;
+      }
+
+      case 'cd': {
+        if (!args[0] || args[0] === '~') { setCwd('/home/akib'); output = ''; break; }
+        const target = resolvePath(args[0]);
+        const node = vfs.stat(target);
+        if (!node) { output = `cd: ${args[0]}: No such file or directory`; }
+        else if (node.type !== 'directory') { output = `cd: ${args[0]}: Not a directory`; }
+        else { setCwd(target); output = ''; }
+        break;
+      }
+
+      case 'pwd':
+        output = cwd;
+        break;
+
+      case 'cat': {
+        if (!args[0]) { output = 'cat: missing operand'; break; }
+        const content = vfs.readFile(resolvePath(args[0]));
+        if (content === null) output = `cat: ${args[0]}: No such file or directory`;
+        else output = content;
+        break;
+      }
+
+      case 'touch': {
+        if (!args[0]) { output = 'touch: missing operand'; break; }
+        const path = resolvePath(args[0]);
+        if (!vfs.exists(path)) vfs.writeFile(path, '');
+        output = '';
+        break;
+      }
+
+      case 'mkdir': {
+        if (!args[0]) { output = 'mkdir: missing operand'; break; }
+        const path = resolvePath(args[0]);
+        if (!vfs.mkdir(path)) output = `mkdir: cannot create directory '${args[0]}': File exists or invalid path`;
+        else output = '';
+        break;
+      }
+
+      case 'rm': {
+        if (!args[0]) { output = 'rm: missing operand'; break; }
+        const path = resolvePath(args[0]);
+        if (!vfs.rm(path)) output = `rm: cannot remove '${args[0]}': No such file or directory`;
+        else output = '';
+        break;
+      }
+
+      case 'cp': {
+        if (args.length < 2) { output = 'cp: missing operand'; break; }
+        if (!vfs.copy(resolvePath(args[0]), resolvePath(args[1]))) output = `cp: failed to copy`;
+        else output = '';
+        break;
+      }
+
+      case 'mv': {
+        if (args.length < 2) { output = 'mv: missing operand'; break; }
+        if (!vfs.move(resolvePath(args[0]), resolvePath(args[1]))) output = `mv: failed to move`;
+        else output = '';
+        break;
+      }
+
+      case 'echo':
+        output = args.join(' ');
+        break;
+
+      case 'whoami': {
+        const name = localStorage.getItem('akibos-username') || 'akib';
+        output = name;
+        break;
+      }
+
+      case 'date':
+        output = new Date().toString();
+        break;
+
+      case 'uname':
+        output = 'AkibOS 1.0 x86_64';
+        break;
+
+      case 'neofetch':
+        output = `
+       ___       ${localStorage.getItem('akibos-username') || 'akib'}@akibos
+      /   \\      OS: AkibOS 1.0
+     / A   \\     Kernel: web-5.0
+    /  kib   \\   Shell: akibsh 1.0
+   /   OS     \\  DE: Plasma Web
+  /____________\\ CPU: Browser Engine
+                 Memory: ∞ MB`;
+        break;
+
+      case 'open':
+        if (!args[0]) { output = 'open: specify app id'; break; }
+        eventBus.emit(OS_EVENTS.OPEN_APP, { appId: args[0] });
+        output = `Launching ${args[0]}...`;
+        break;
+
+      default:
+        output = `${cmd}: command not found`;
+    }
+
+    // Handle output redirection
+    if (outputFile && output) {
+      vfs.writeFile(resolvePath(outputFile), output);
+      return '';
+    }
+
+    return output;
+  }, [cwd, resolvePath]);
+
   const handleSubmit = () => {
     const trimmed = input.trim();
-    const prompt = `akib@akibos:~$ ${trimmed}`;
+    const username = localStorage.getItem('akibos-username') || 'akib';
+    const prompt = `${username}@akibos:${cwd === '/home/akib' ? '~' : cwd}$ ${trimmed}`;
+
     if (!trimmed) {
       setLines(prev => [...prev, prompt]);
       setInput('');
@@ -57,13 +230,8 @@ const AppTerminal = () => {
       return;
     }
 
-    const parts = trimmed.split(/\s+/);
-    const cmd = parts[0];
-    const args = parts.slice(1);
-
-    const handler = commands[cmd];
-    const output = handler ? handler(args) : `${cmd}: command not found`;
-    setLines(prev => [...prev, prompt, output]);
+    const output = executeCommand(trimmed);
+    setLines(prev => output ? [...prev, prompt, output] : [...prev, prompt]);
     setCmdHistory(prev => [...prev, trimmed]);
     setHistIdx(-1);
     setInput('');
@@ -72,6 +240,22 @@ const AppTerminal = () => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSubmit();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      const parts = input.split(/\s+/);
+      const last = parts[parts.length - 1];
+      if (last) {
+        const completions = getCompletions(last);
+        if (completions.length === 1) {
+          parts[parts.length - 1] = last.includes('/')
+            ? last.substring(0, last.lastIndexOf('/') + 1) + completions[0]
+            : completions[0];
+          setInput(parts.join(' '));
+        } else if (completions.length > 1) {
+          const username = localStorage.getItem('akibos-username') || 'akib';
+          setLines(prev => [...prev, `${username}@akibos:${cwd === '/home/akib' ? '~' : cwd}$ ${input}`, completions.join('  ')]);
+        }
+      }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (cmdHistory.length > 0) {
@@ -83,16 +267,13 @@ const AppTerminal = () => {
       e.preventDefault();
       if (histIdx >= 0) {
         const newIdx = histIdx + 1;
-        if (newIdx >= cmdHistory.length) {
-          setHistIdx(-1);
-          setInput('');
-        } else {
-          setHistIdx(newIdx);
-          setInput(cmdHistory[newIdx]);
-        }
+        if (newIdx >= cmdHistory.length) { setHistIdx(-1); setInput(''); }
+        else { setHistIdx(newIdx); setInput(cmdHistory[newIdx]); }
       }
     }
   };
+
+  const username = localStorage.getItem('akibos-username') || 'akib';
 
   return (
     <div
@@ -104,9 +285,9 @@ const AppTerminal = () => {
         <pre key={i} className="whitespace-pre-wrap">{line}</pre>
       ))}
       <div className="flex items-center gap-0">
-        <span style={{ color: 'hsl(217, 91%, 60%)' }}>akib@akibos</span>
+        <span style={{ color: 'hsl(217, 91%, 60%)' }}>{username}@akibos</span>
         <span style={{ color: 'hsl(210, 20%, 50%)' }}>:</span>
-        <span style={{ color: 'hsl(260, 80%, 70%)' }}>~</span>
+        <span style={{ color: 'hsl(260, 80%, 70%)' }}>{cwd === '/home/akib' ? '~' : cwd}</span>
         <span style={{ color: 'hsl(210, 20%, 50%)' }}>$ </span>
         <input
           ref={inputRef}

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export interface WindowState {
   id: string;
@@ -12,6 +12,7 @@ export interface WindowState {
   maximized: boolean;
   zIndex: number;
   url?: string;
+  initialData?: Record<string, any>;
 }
 
 let nextZ = 10;
@@ -20,7 +21,7 @@ let windowCounter = 0;
 export function useWindowManager() {
   const [windows, setWindows] = useState<WindowState[]>([]);
 
-  const openWindow = useCallback((appId: string, title: string, url?: string) => {
+  const openWindow = useCallback((appId: string, title: string, url?: string, initialData?: Record<string, any>) => {
     windowCounter++;
     const id = `${appId}-${windowCounter}`;
     const offset = (windowCounter % 8) * 30;
@@ -36,6 +37,7 @@ export function useWindowManager() {
       maximized: false,
       zIndex: ++nextZ,
       url,
+      initialData,
     };
     setWindows(prev => [...prev, newWin]);
     return id;

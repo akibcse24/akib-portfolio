@@ -13,6 +13,7 @@ import NotificationCenter, { useNotifications } from './NotificationCenter';
 import { osApps, OsApp } from '@/lib/os-apps';
 import { useWindowManager } from '@/hooks/useWindowManager';
 import { playClickSound } from '@/lib/sounds';
+import { eventBus, OS_EVENTS } from '@/lib/event-bus';
 
 const Desktop = () => {
   const [startMenuOpen, setStartMenuOpen] = useState(false);
@@ -20,6 +21,7 @@ const Desktop = () => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [snapPreview, setSnapPreview] = useState<'left' | 'right' | 'top' | null>(null);
   const [taskbarRevealed, setTaskbarRevealed] = useState(false);
+  const [locked, setLocked] = useState(false);
   const { notifications, addNotification, removeNotification } = useNotifications();
   const {
     windows, openWindow, closeWindow, focusWindow,
@@ -28,7 +30,6 @@ const Desktop = () => {
 
   const desktopApps = osApps.filter(a => a.desktopShortcut);
 
-  // Determine if taskbar should auto-hide
   const hasMaximizedWindow = windows.some(w => w.maximized && !w.minimized);
   const taskbarHidden = hasMaximizedWindow && !taskbarRevealed;
 
@@ -37,6 +38,29 @@ const Desktop = () => {
     const timer = setTimeout(() => addNotification('Welcome to AkibOS', 'Your desktop is ready. Enjoy!', 'success'), 800);
     return () => clearTimeout(timer);
   }, []);
+
+  // Listen for event bus: open file → launch text editor
+  useEffect(() => {
+    const handleOpenFile = ({ path }: { path: string }) => {
+      // Check if text editor is already open
+      const existingEditor = windows.find(w => w.appId === 'text-editor');
+      if (existingEditor) {
+        focusWindow(existingEditor.id);
+        // The TextEditor listens to the event bus itself
+      } else {
+        openWindow('text-editor', 'Text Editor', undefined, { filePath: path });
+      }
+    };
+
+    const handleOpenApp = ({ appId, data }: { appId: string; data?: any }) => {
+      const app = osApps.find(a => a.id === appId);
+      if (app) launchApp(app);
+    };
+
+    const unsub1 = eventBus.on(OS_EVENTS.OPEN_FILE, handleOpenFile);
+    const unsub2 = eventBus.on(OS_EVENTS.OPEN_APP, handleOpenApp);
+    return () => { unsub1(); unsub2(); };
+  }, [windows, focusWindow, openWindow]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -69,7 +93,6 @@ const Desktop = () => {
     return () => window.removeEventListener('keydown', handler);
   }, [windows, closeWindow, focusWindow]);
 
-  // Reset taskbar reveal when no maximized windows
   useEffect(() => {
     if (!hasMaximizedWindow) setTaskbarRevealed(false);
   }, [hasMaximizedWindow]);
@@ -88,7 +111,7 @@ const Desktop = () => {
     setContextMenu({ x: e.clientX, y: e.clientY });
   }, []);
 
-  const renderWindowContent = (win: { appId: string; url?: string }) => {
+  const renderWindowContent = (win: { appId: string; url?: string; initialData?: Record<string, any> }) => {
     const app = osApps.find(a => a.id === win.appId);
     if (!app) return null;
 
@@ -97,9 +120,9 @@ const Desktop = () => {
     }
 
     switch (app.id) {
-      case 'file-manager': return <AppFileManager />;
+      case 'file-manager': return <AppFileManager initialPath={win.initialData?.path} />;
       case 'terminal': return <AppTerminal />;
-      case 'text-editor': return <AppTextEditor />;
+      case 'text-editor': return <AppTextEditor initialFilePath={win.initialData?.filePath} />;
       case 'settings': return <AppSettings wallpaperIndex={wallpaperIndex} onWallpaperChange={setWallpaperIndex} />;
       default: return <div className="flex items-center justify-center h-full text-os-window-body-foreground text-sm">{app.name}</div>;
     }
@@ -210,6 +233,7 @@ const Desktop = () => {
           open={startMenuOpen}
           onClose={() => setStartMenuOpen(false)}
           onLaunchApp={launchApp}
+          onLockScreen={() => setLocked(true)}
         />
       </div>
 
