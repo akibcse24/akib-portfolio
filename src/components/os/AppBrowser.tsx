@@ -104,7 +104,7 @@ const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
 
     // Search query detection
     if (!finalUrl.includes('.') && !finalUrl.startsWith('http')) {
-      finalUrl = `https://www.google.com/search?q=${encodeURIComponent(finalUrl)}`;
+      finalUrl = SEARCH_ENGINES[searchEngine].searchUrl + encodeURIComponent(finalUrl);
     } else if (!finalUrl.startsWith('http')) {
       finalUrl = 'https://' + finalUrl;
     }
@@ -144,17 +144,17 @@ const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
     }
   };
 
-  const goHome = () => navigate(HOMEPAGE);
-  const refresh = () => loadUrl(activeTab?.url || HOMEPAGE);
+  const goHome = () => navigate(homepage);
+  const refresh = () => loadUrl(activeTab?.url || homepage);
 
   const addTab = () => {
     tabCounter++;
-    const newTab: BrowserTab = { id: `tab-${tabCounter}`, url: HOMEPAGE, title: 'New Tab', loading: true };
+    const newTab: BrowserTab = { id: `tab-${tabCounter}`, url: homepage, title: 'New Tab', loading: true };
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(newTab.id);
-    setInputUrl(HOMEPAGE);
-    setHistory(prev => ({ ...prev, [newTab.id]: { urls: [HOMEPAGE], index: 0 } }));
-    loadUrl(HOMEPAGE, newTab.id);
+    setInputUrl(homepage);
+    setHistory(prev => ({ ...prev, [newTab.id]: { urls: [homepage], index: 0 } }));
+    loadUrl(homepage, newTab.id);
   };
 
   const closeTab = (tabId: string) => {
