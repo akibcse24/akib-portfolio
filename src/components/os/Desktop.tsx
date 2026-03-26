@@ -7,6 +7,8 @@ import AppFileManager from './AppFileManager';
 import AppTerminal from './AppTerminal';
 import AppTextEditor from './AppTextEditor';
 import AppSettings, { wallpapers, type Wallpaper } from './AppSettings';
+import AppCalculator from './AppCalculator';
+import AppMusicPlayer from './AppMusicPlayer';
 import Taskbar from './Taskbar';
 import DesktopWidget from './DesktopWidget';
 import NotificationCenter, { useNotifications } from './NotificationCenter';
@@ -124,6 +126,8 @@ const Desktop = () => {
       case 'terminal': return <AppTerminal />;
       case 'text-editor': return <AppTextEditor initialFilePath={win.initialData?.filePath} />;
       case 'settings': return <AppSettings wallpaperIndex={wallpaperIndex} onWallpaperChange={setWallpaperIndex} />;
+      case 'calculator': return <AppCalculator />;
+      case 'music-player': return <AppMusicPlayer />;
       default: return <div className="flex items-center justify-center h-full text-os-window-body-foreground text-sm">{app.name}</div>;
     }
   };

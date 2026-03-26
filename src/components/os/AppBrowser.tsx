@@ -1,23 +1,44 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, RotateCw, Lock, Star, ExternalLink, AlertTriangle, Shield, ShieldOff } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCw, Lock, Star, ExternalLink, AlertTriangle, Shield, ShieldOff, Home, Plus, X, Search, BookmarkPlus, Bookmark } from 'lucide-react';
 import { osApps } from '@/lib/os-apps';
 import { supabase } from '@/integrations/supabase/client';
+
+interface BrowserTab {
+  id: string;
+  url: string;
+  title: string;
+  loading: boolean;
+}
 
 interface AppBrowserProps {
   initialUrl?: string;
 }
 
-const AppBrowser = ({ initialUrl = 'https://www.google.com' }: AppBrowserProps) => {
-  const [url, setUrl] = useState(initialUrl);
+const HOMEPAGE = 'https://www.google.com';
+const BOOKMARKS_KEY = 'akibos-browser-bookmarks';
+
+let tabCounter = 0;
+
+const AppBrowser = ({ initialUrl = HOMEPAGE }: AppBrowserProps) => {
+  const [tabs, setTabs] = useState<BrowserTab[]>(() => {
+    tabCounter++;
+    return [{ id: `tab-${tabCounter}`, url: initialUrl, title: 'Loading...', loading: true }];
+  });
+  const [activeTabId, setActiveTabId] = useState(`tab-${tabCounter}`);
   const [inputUrl, setInputUrl] = useState(initialUrl);
-  const [history, setHistory] = useState<string[]>([initialUrl]);
-  const [historyIndex, setHistoryIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [blocked, setBlocked] = useState(false);
-  const [proxyMode, setProxyMode] = useState(true); // proxy enabled by default
+  const [history, setHistory] = useState<Record<string, { urls: string[]; index: number }>>({});
+  const [proxyMode, setProxyMode] = useState(false); // default off for better UX
   const [proxyHtml, setProxyHtml] = useState<string | null>(null);
   const [proxyError, setProxyError] = useState<string | null>(null);
+  const [bookmarks, setBookmarks] = useState<{ url: string; title: string }[]>(() => {
+    try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || '[]'); } catch { return []; }
+  });
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
+  const tabHistory = history[activeTabId] || { urls: [activeTab?.url || HOMEPAGE], index: 0 };
 
   const isKnownBlocked = (checkUrl: string) => {
     try {
@@ -25,8 +46,12 @@ const AppBrowser = ({ initialUrl = 'https://www.google.com' }: AppBrowserProps) 
     } catch { return false; }
   };
 
+  const updateTab = (tabId: string, updates: Partial<BrowserTab>) => {
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, ...updates } : t));
+  };
+
   const fetchViaProxy = useCallback(async (targetUrl: string) => {
-    setLoading(true);
+    updateTab(activeTabId, { loading: true });
     setProxyError(null);
     setProxyHtml(null);
     try {
@@ -36,106 +61,201 @@ const AppBrowser = ({ initialUrl = 'https://www.google.com' }: AppBrowserProps) 
       if (error) throw error;
       if (typeof data === 'string') {
         setProxyHtml(data);
+        // Try to extract title
+        const titleMatch = data.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch) updateTab(activeTabId, { title: titleMatch[1].trim() });
       } else if (data?.error) {
         setProxyError(data.error);
       } else {
-        // Edge function returned HTML as text
-        setProxyHtml(JSON.stringify(data));
+        setProxyHtml(typeof data === 'object' ? JSON.stringify(data) : String(data));
       }
     } catch (err: any) {
       setProxyError(err.message || 'Proxy request failed');
     } finally {
-      setLoading(false);
+      updateTab(activeTabId, { loading: false });
     }
-  }, []);
+  }, [activeTabId]);
 
-  const loadUrl = useCallback((targetUrl: string) => {
-    setBlocked(false);
+  const loadUrl = useCallback((targetUrl: string, tabId?: string) => {
+    const tid = tabId || activeTabId;
     setProxyHtml(null);
     setProxyError(null);
 
     if (proxyMode) {
       fetchViaProxy(targetUrl);
     } else {
-      setLoading(true);
-      setBlocked(isKnownBlocked(targetUrl));
+      updateTab(tid, { loading: true, url: targetUrl });
     }
-  }, [proxyMode, fetchViaProxy]);
+  }, [proxyMode, fetchViaProxy, activeTabId]);
 
   const navigate = (newUrl: string) => {
-    let finalUrl = newUrl;
-    if (!finalUrl.startsWith('http')) finalUrl = 'https://' + finalUrl;
-    setUrl(finalUrl);
+    let finalUrl = newUrl.trim();
+
+    // Search query detection
+    if (!finalUrl.includes('.') && !finalUrl.startsWith('http')) {
+      finalUrl = `https://www.google.com/search?q=${encodeURIComponent(finalUrl)}`;
+    } else if (!finalUrl.startsWith('http')) {
+      finalUrl = 'https://' + finalUrl;
+    }
+
+    updateTab(activeTabId, { url: finalUrl, title: 'Loading...' });
     setInputUrl(finalUrl);
-    const newHistory = [...history.slice(0, historyIndex + 1), finalUrl];
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
+
+    // Update history
+    const h = tabHistory;
+    const newUrls = [...h.urls.slice(0, h.index + 1), finalUrl];
+    setHistory(prev => ({ ...prev, [activeTabId]: { urls: newUrls, index: newUrls.length - 1 } }));
+
     loadUrl(finalUrl);
   };
 
   const goBack = () => {
-    if (historyIndex > 0) {
-      const i = historyIndex - 1;
-      setHistoryIndex(i);
-      setUrl(history[i]);
-      setInputUrl(history[i]);
-      loadUrl(history[i]);
+    const h = tabHistory;
+    if (h.index > 0) {
+      const newIndex = h.index - 1;
+      const url = h.urls[newIndex];
+      setHistory(prev => ({ ...prev, [activeTabId]: { ...h, index: newIndex } }));
+      updateTab(activeTabId, { url, title: 'Loading...' });
+      setInputUrl(url);
+      loadUrl(url);
     }
   };
 
   const goForward = () => {
-    if (historyIndex < history.length - 1) {
-      const i = historyIndex + 1;
-      setHistoryIndex(i);
-      setUrl(history[i]);
-      setInputUrl(history[i]);
-      loadUrl(history[i]);
+    const h = tabHistory;
+    if (h.index < h.urls.length - 1) {
+      const newIndex = h.index + 1;
+      const url = h.urls[newIndex];
+      setHistory(prev => ({ ...prev, [activeTabId]: { ...h, index: newIndex } }));
+      updateTab(activeTabId, { url, title: 'Loading...' });
+      setInputUrl(url);
+      loadUrl(url);
     }
   };
 
-  const refresh = () => {
-    loadUrl(url);
+  const goHome = () => navigate(HOMEPAGE);
+  const refresh = () => loadUrl(activeTab?.url || HOMEPAGE);
+
+  const addTab = () => {
+    tabCounter++;
+    const newTab: BrowserTab = { id: `tab-${tabCounter}`, url: HOMEPAGE, title: 'New Tab', loading: true };
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabId(newTab.id);
+    setInputUrl(HOMEPAGE);
+    setHistory(prev => ({ ...prev, [newTab.id]: { urls: [HOMEPAGE], index: 0 } }));
+    loadUrl(HOMEPAGE, newTab.id);
   };
 
+  const closeTab = (tabId: string) => {
+    if (tabs.length <= 1) return;
+    const newTabs = tabs.filter(t => t.id !== tabId);
+    setTabs(newTabs);
+    if (activeTabId === tabId) {
+      setActiveTabId(newTabs[newTabs.length - 1].id);
+    }
+    setHistory(prev => { const h = { ...prev }; delete h[tabId]; return h; });
+  };
+
+  const switchTab = (tabId: string) => {
+    setActiveTabId(tabId);
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab) setInputUrl(tab.url);
+  };
+
+  const toggleBookmark = () => {
+    const url = activeTab?.url || '';
+    const title = activeTab?.title || url;
+    const existing = bookmarks.findIndex(b => b.url === url);
+    let newBookmarks: { url: string; title: string }[];
+    if (existing >= 0) {
+      newBookmarks = bookmarks.filter((_, i) => i !== existing);
+    } else {
+      newBookmarks = [...bookmarks, { url, title }];
+    }
+    setBookmarks(newBookmarks);
+    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(newBookmarks));
+  };
+
+  const isBookmarked = bookmarks.some(b => b.url === activeTab?.url);
+
   useEffect(() => {
-    setUrl(initialUrl);
-    setInputUrl(initialUrl);
-    setHistory([initialUrl]);
-    setHistoryIndex(0);
-    loadUrl(initialUrl);
+    if (activeTab) setInputUrl(activeTab.url);
+  }, [activeTabId]);
+
+  // Initial load
+  useEffect(() => {
+    const tid = tabs[0]?.id;
+    if (tid) {
+      setHistory({ [tid]: { urls: [initialUrl], index: 0 } });
+      loadUrl(initialUrl, tid);
+    }
   }, [initialUrl]);
 
-  // Re-load when proxy mode toggles
+  // Re-load on proxy toggle
   useEffect(() => {
-    loadUrl(url);
+    if (activeTab) loadUrl(activeTab.url);
   }, [proxyMode]);
 
+  const blocked = !proxyMode && isKnownBlocked(activeTab?.url || '');
   const matchedApp = osApps.find(app => {
-    try { return app.url && url.includes(new URL(app.url).hostname); }
+    try { return app.url && activeTab?.url.includes(new URL(app.url).hostname); }
     catch { return false; }
   });
 
-  // Build proxy blob URL for iframe srcdoc
-  const iframeSrc = proxyMode && proxyHtml ? undefined : (proxyMode ? undefined : url);
-  const iframeSrcDoc = proxyMode && proxyHtml ? proxyHtml : undefined;
-
-  const showBlockedFallback = !proxyMode && blocked;
+  const showBlockedFallback = blocked && !proxyMode;
   const showProxyError = proxyMode && proxyError;
   const showIframe = !showBlockedFallback && !showProxyError && (!proxyMode || proxyHtml);
 
+  const iframeSrc = proxyMode ? undefined : activeTab?.url;
+  const iframeSrcDoc = proxyMode && proxyHtml ? proxyHtml : undefined;
+
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex items-center gap-1.5 px-2 py-1.5 bg-os-window-chrome border-b border-os-panel-border">
-        <button onClick={goBack} disabled={historyIndex <= 0} className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-30 transition-colors">
+      {/* Tab bar */}
+      <div className="flex items-center bg-os-window-chrome border-b border-os-panel-border min-h-[28px]">
+        <div className="flex-1 flex items-center overflow-x-auto scrollbar-hide">
+          {tabs.map(tab => (
+            <div
+              key={tab.id}
+              onClick={() => switchTab(tab.id)}
+              className={`group flex items-center gap-1.5 px-3 py-1 text-[11px] cursor-pointer border-r border-os-panel-border max-w-[160px] min-w-[80px] transition-colors ${
+                tab.id === activeTabId ? 'bg-os-window-body text-os-window-body-foreground' : 'text-os-window-chrome-foreground/60 hover:bg-white/5'
+              }`}
+            >
+              {tab.loading && <div className="w-2.5 h-2.5 border border-os-accent border-t-transparent rounded-full animate-spin shrink-0" />}
+              <span className="truncate flex-1">{tab.title}</span>
+              {tabs.length > 1 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                  className="opacity-0 group-hover:opacity-100 w-4 h-4 flex items-center justify-center rounded hover:bg-white/20 shrink-0 transition-opacity"
+                >
+                  <X size={9} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <button onClick={addTab} className="w-7 h-7 flex items-center justify-center text-os-window-chrome-foreground/50 hover:bg-white/10 transition-colors shrink-0">
+          <Plus size={13} />
+        </button>
+      </div>
+
+      {/* Navigation toolbar */}
+      <div className="flex items-center gap-1 px-2 py-1 bg-os-window-chrome border-b border-os-panel-border">
+        <button onClick={goBack} disabled={tabHistory.index <= 0} className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-30 transition-colors">
           <ArrowLeft size={14} className="text-os-window-chrome-foreground" />
         </button>
-        <button onClick={goForward} disabled={historyIndex >= history.length - 1} className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-30 transition-colors">
+        <button onClick={goForward} disabled={tabHistory.index >= tabHistory.urls.length - 1} className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-30 transition-colors">
           <ArrowRight size={14} className="text-os-window-chrome-foreground" />
         </button>
         <button onClick={refresh} className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10 transition-colors">
-          <RotateCw size={14} className={`text-os-window-chrome-foreground ${loading ? 'animate-spin' : ''}`} />
+          <RotateCw size={14} className={`text-os-window-chrome-foreground ${activeTab?.loading ? 'animate-spin' : ''}`} />
         </button>
+        <button onClick={goHome} className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10 transition-colors">
+          <Home size={14} className="text-os-window-chrome-foreground" />
+        </button>
+
+        {/* URL bar */}
         <div className="flex-1 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs" style={{ background: 'hsl(220, 20%, 10%)' }}>
           {proxyMode ? (
             <Shield size={11} className="text-os-accent shrink-0" />
@@ -147,66 +267,85 @@ const AppBrowser = ({ initialUrl = 'https://www.google.com' }: AppBrowserProps) 
             value={inputUrl}
             onChange={e => setInputUrl(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') navigate(inputUrl); }}
+            placeholder="Search or enter URL"
           />
+          {inputUrl && (
+            <button onClick={() => setInputUrl('')} className="text-os-window-chrome-foreground/30 hover:text-os-window-chrome-foreground/60">
+              <X size={11} />
+            </button>
+          )}
         </div>
-        <button
-          onClick={() => setProxyMode(!proxyMode)}
-          title={proxyMode ? 'Proxy mode ON — bypasses frame restrictions (some sites may break)' : 'Proxy mode OFF — direct iframe loading'}
-          className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${proxyMode ? 'bg-os-accent/20 hover:bg-os-accent/30' : 'hover:bg-white/10'}`}
-        >
-          {proxyMode ? (
-            <Shield size={14} className="text-os-accent" />
+
+        {/* Bookmark */}
+        <button onClick={toggleBookmark} className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10 transition-colors" title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}>
+          {isBookmarked ? (
+            <Bookmark size={14} className="text-os-accent" fill="currentColor" />
           ) : (
-            <ShieldOff size={14} className="text-os-window-chrome-foreground/50" />
+            <BookmarkPlus size={14} className="text-os-window-chrome-foreground/60" />
           )}
         </button>
-        <button className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10 transition-colors">
-          <Star size={14} className="text-os-window-chrome-foreground" />
+
+        {/* Proxy toggle */}
+        <button
+          onClick={() => setProxyMode(!proxyMode)}
+          title={proxyMode ? 'Proxy ON — bypasses frame restrictions' : 'Proxy OFF — direct loading'}
+          className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${proxyMode ? 'bg-os-accent/20 hover:bg-os-accent/30' : 'hover:bg-white/10'}`}
+        >
+          {proxyMode ? <Shield size={14} className="text-os-accent" /> : <ShieldOff size={14} className="text-os-window-chrome-foreground/50" />}
         </button>
       </div>
 
-      {/* Proxy mode indicator */}
+      {/* Bookmarks bar */}
+      {bookmarks.length > 0 && (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-os-window-chrome/50 border-b border-os-panel-border overflow-x-auto scrollbar-hide">
+          {bookmarks.map((bm, i) => (
+            <button
+              key={i}
+              onClick={() => navigate(bm.url)}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] text-os-window-chrome-foreground/60 hover:bg-white/10 hover:text-os-window-chrome-foreground transition-colors whitespace-nowrap shrink-0"
+            >
+              <Bookmark size={9} />
+              {bm.title.substring(0, 20)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Proxy indicator */}
       {proxyMode && (
         <div className="flex items-center gap-2 px-3 py-1 text-[10px] bg-os-accent/10 text-os-accent border-b border-os-panel-border">
           <Shield size={10} />
-          <span>Proxy mode — pages load through a server proxy. JS-heavy sites may not work correctly.</span>
-          <button onClick={() => window.open(url, '_blank')} className="ml-auto flex items-center gap-1 hover:underline">
+          <span>Proxy mode — JS-heavy sites may not work. </span>
+          <button onClick={() => window.open(activeTab?.url || '', '_blank')} className="ml-auto flex items-center gap-1 hover:underline">
             <ExternalLink size={10} /> Open directly
           </button>
         </div>
       )}
 
       {/* Loading bar */}
-      {loading && (
+      {activeTab?.loading && (
         <div className="h-0.5 w-full overflow-hidden" style={{ background: 'hsl(220, 20%, 15%)' }}>
           <div className="h-full animate-pulse" style={{ width: '60%', background: 'hsl(217, 91%, 60%)' }} />
         </div>
       )}
 
-      {/* Proxy error */}
+      {/* Content */}
       {showProxyError && (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-os-window-body">
           <AlertTriangle size={40} className="text-os-accent" />
           <h2 className="text-base font-semibold text-os-window-body-foreground">Failed to load page</h2>
           <p className="text-xs text-os-window-body-foreground/60 text-center max-w-sm">{proxyError}</p>
           <div className="flex gap-2">
-            <button
-              onClick={() => window.open(url, '_blank')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-os-accent text-white hover:bg-os-accent/80 transition-colors"
-            >
+            <button onClick={() => window.open(activeTab?.url || '', '_blank')} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-os-accent text-white hover:bg-os-accent/80 transition-colors">
               <ExternalLink size={14} /> Open in New Tab
             </button>
-            <button
-              onClick={() => { setProxyMode(false); }}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium border border-os-panel-border text-os-window-body-foreground hover:bg-white/5 transition-colors"
-            >
-              <ShieldOff size={14} /> Try Direct Mode
+            <button onClick={() => setProxyMode(false)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium border border-os-panel-border text-os-window-body-foreground hover:bg-white/5 transition-colors">
+              <ShieldOff size={14} /> Direct Mode
             </button>
           </div>
         </div>
       )}
 
-      {/* Blocked fallback (direct mode only) */}
       {showBlockedFallback && (
         <div className="flex-1 flex flex-col items-center justify-center gap-6 bg-os-window-body">
           <div className="flex flex-col items-center gap-4">
@@ -218,35 +357,40 @@ const AppBrowser = ({ initialUrl = 'https://www.google.com' }: AppBrowserProps) 
               </div>
             )}
             <h2 className="text-lg font-semibold text-os-window-body-foreground">{matchedApp?.name || 'Website'}</h2>
-            <p className="text-sm text-os-window-body-foreground/60 text-center max-w-xs">
-              This site blocks iframe embedding. Try proxy mode or open in a new tab.
-            </p>
+            <p className="text-sm text-os-window-body-foreground/60 text-center max-w-xs">This site blocks iframe embedding.</p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => setProxyMode(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium bg-os-accent text-white hover:bg-os-accent/80 transition-colors"
-            >
+            <button onClick={() => setProxyMode(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium bg-os-accent text-white hover:bg-os-accent/80 transition-colors">
               <Shield size={16} /> Enable Proxy
             </button>
-            <button
-              onClick={() => window.open(url, '_blank')}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium border border-os-panel-border text-os-window-body-foreground hover:bg-white/5 transition-colors"
-            >
+            <button onClick={() => window.open(activeTab?.url || '', '_blank')} className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium border border-os-panel-border text-os-window-body-foreground hover:bg-white/5 transition-colors">
               <ExternalLink size={16} /> Open in New Tab
             </button>
           </div>
         </div>
       )}
 
-      {/* Iframe */}
       {showIframe && (
         <iframe
           ref={iframeRef}
           src={iframeSrc}
           srcDoc={iframeSrcDoc}
           className="flex-1 w-full border-0 bg-white"
-          onLoad={() => setLoading(false)}
+          onLoad={() => {
+            updateTab(activeTabId, { loading: false });
+            // Try to get title from iframe
+            try {
+              const title = iframeRef.current?.contentDocument?.title;
+              if (title) updateTab(activeTabId, { title });
+            } catch {
+              // Cross-origin — use URL as title
+              try {
+                const hostname = new URL(activeTab?.url || '').hostname;
+                updateTab(activeTabId, { title: hostname });
+              } catch {}
+            }
+          }}
+          onError={() => updateTab(activeTabId, { loading: false, title: 'Error' })}
           sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
           title="Browser"
         />
