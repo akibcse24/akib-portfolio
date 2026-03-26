@@ -132,10 +132,6 @@ const Window = ({ win, children, taskbarHidden, onClose, onMinimize, onMaximize,
         boxShadow: isFullscreen ? 'none' : '0 12px 40px -8px hsla(0, 0%, 0%, 0.6), 0 0 0 1px hsla(217, 91%, 60%, 0.1)',
       }}
       onMouseDown={onFocus}
-      ref={(el) => {
-        (windowRef as any).current = el;
-        el?.addEventListener('fullscreenchange', handleFullscreenChange);
-      }}
     >
       {/* Title bar */}
       <div
