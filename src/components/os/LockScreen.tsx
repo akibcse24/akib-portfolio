@@ -229,7 +229,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
       ) : (
         <button
           onClick={(e) => { e.stopPropagation(); setShowInput(true); }}
-          className="px-8 py-2.5 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105"
+          className="relative z-10 px-8 py-2.5 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105"
           style={{
             background: 'hsla(217, 91%, 60%, 0.2)',
             border: '1px solid hsla(217, 91%, 60%, 0.4)',
@@ -242,7 +242,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
       )}
 
       {!showInput && (
-        <p className="absolute bottom-8 text-xs animate-pulse" style={{ color: 'hsl(220, 15%, 40%)' }}>
+        <p className="absolute bottom-8 text-xs animate-pulse z-10" style={{ color: 'hsl(220, 15%, 40%)' }}>
           Click anywhere to unlock
         </p>
       )}
