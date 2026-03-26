@@ -14,20 +14,31 @@ interface AppBrowserProps {
   initialUrl?: string;
 }
 
-const HOMEPAGE = 'https://www.google.com';
+type SearchEngine = 'google' | 'duckduckgo';
+const SEARCH_ENGINES: Record<SearchEngine, { name: string; url: string; searchUrl: string }> = {
+  google: { name: 'Google', url: 'https://www.google.com', searchUrl: 'https://www.google.com/search?q=' },
+  duckduckgo: { name: 'DuckDuckGo', url: 'https://duckduckgo.com', searchUrl: 'https://duckduckgo.com/?q=' },
+};
+const SEARCH_ENGINE_KEY = 'akibos-search-engine';
 const BOOKMARKS_KEY = 'akibos-browser-bookmarks';
 
 let tabCounter = 0;
 
-const AppBrowser = ({ initialUrl = HOMEPAGE }: AppBrowserProps) => {
+const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
+  const [searchEngine, setSearchEngine] = useState<SearchEngine>(() => {
+    return (localStorage.getItem(SEARCH_ENGINE_KEY) as SearchEngine) || 'duckduckgo';
+  });
+  const homepage = SEARCH_ENGINES[searchEngine].url;
+  const effectiveInitial = initialUrl || homepage;
+
   const [tabs, setTabs] = useState<BrowserTab[]>(() => {
     tabCounter++;
-    return [{ id: `tab-${tabCounter}`, url: initialUrl, title: 'Loading...', loading: true }];
+    return [{ id: `tab-${tabCounter}`, url: effectiveInitial, title: 'Loading...', loading: true }];
   });
   const [activeTabId, setActiveTabId] = useState(`tab-${tabCounter}`);
-  const [inputUrl, setInputUrl] = useState(initialUrl);
+  const [inputUrl, setInputUrl] = useState(effectiveInitial);
   const [history, setHistory] = useState<Record<string, { urls: string[]; index: number }>>({});
-  const [proxyMode, setProxyMode] = useState(false); // default off for better UX
+  const [proxyMode, setProxyMode] = useState(false);
   const [proxyHtml, setProxyHtml] = useState<string | null>(null);
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [bookmarks, setBookmarks] = useState<{ url: string; title: string }[]>(() => {
@@ -38,7 +49,7 @@ const AppBrowser = ({ initialUrl = HOMEPAGE }: AppBrowserProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
-  const tabHistory = history[activeTabId] || { urls: [activeTab?.url || HOMEPAGE], index: 0 };
+  const tabHistory = history[activeTabId] || { urls: [activeTab?.url || homepage], index: 0 };
 
   const isKnownBlocked = (checkUrl: string) => {
     try {
@@ -93,7 +104,7 @@ const AppBrowser = ({ initialUrl = HOMEPAGE }: AppBrowserProps) => {
 
     // Search query detection
     if (!finalUrl.includes('.') && !finalUrl.startsWith('http')) {
-      finalUrl = `https://www.google.com/search?q=${encodeURIComponent(finalUrl)}`;
+      finalUrl = SEARCH_ENGINES[searchEngine].searchUrl + encodeURIComponent(finalUrl);
     } else if (!finalUrl.startsWith('http')) {
       finalUrl = 'https://' + finalUrl;
     }
@@ -133,17 +144,17 @@ const AppBrowser = ({ initialUrl = HOMEPAGE }: AppBrowserProps) => {
     }
   };
 
-  const goHome = () => navigate(HOMEPAGE);
-  const refresh = () => loadUrl(activeTab?.url || HOMEPAGE);
+  const goHome = () => navigate(homepage);
+  const refresh = () => loadUrl(activeTab?.url || homepage);
 
   const addTab = () => {
     tabCounter++;
-    const newTab: BrowserTab = { id: `tab-${tabCounter}`, url: HOMEPAGE, title: 'New Tab', loading: true };
+    const newTab: BrowserTab = { id: `tab-${tabCounter}`, url: homepage, title: 'New Tab', loading: true };
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(newTab.id);
-    setInputUrl(HOMEPAGE);
-    setHistory(prev => ({ ...prev, [newTab.id]: { urls: [HOMEPAGE], index: 0 } }));
-    loadUrl(HOMEPAGE, newTab.id);
+    setInputUrl(homepage);
+    setHistory(prev => ({ ...prev, [newTab.id]: { urls: [homepage], index: 0 } }));
+    loadUrl(homepage, newTab.id);
   };
 
   const closeTab = (tabId: string) => {
@@ -186,8 +197,8 @@ const AppBrowser = ({ initialUrl = HOMEPAGE }: AppBrowserProps) => {
   useEffect(() => {
     const tid = tabs[0]?.id;
     if (tid) {
-      setHistory({ [tid]: { urls: [initialUrl], index: 0 } });
-      loadUrl(initialUrl, tid);
+      setHistory({ [tid]: { urls: [effectiveInitial], index: 0 } });
+      loadUrl(effectiveInitial, tid);
     }
   }, [initialUrl]);
 
@@ -293,6 +304,22 @@ const AppBrowser = ({ initialUrl = HOMEPAGE }: AppBrowserProps) => {
         >
           {proxyMode ? <Shield size={14} className="text-os-accent" /> : <ShieldOff size={14} className="text-os-window-chrome-foreground/50" />}
         </button>
+
+        {/* Search engine selector */}
+        <select
+          value={searchEngine}
+          onChange={(e) => {
+            const eng = e.target.value as SearchEngine;
+            setSearchEngine(eng);
+            localStorage.setItem(SEARCH_ENGINE_KEY, eng);
+          }}
+          className="h-7 px-1 rounded text-[10px] bg-transparent text-os-window-chrome-foreground border border-os-panel-border outline-none cursor-pointer hover:bg-white/10"
+          title="Search engine"
+        >
+          {Object.entries(SEARCH_ENGINES).map(([key, val]) => (
+            <option key={key} value={key} className="bg-os-window-chrome text-os-window-chrome-foreground">{val.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* Bookmarks bar */}

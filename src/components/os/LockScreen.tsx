@@ -95,11 +95,17 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
   return (
     <div
       className={`fixed inset-0 flex flex-col items-center justify-center z-[9999] transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
-      style={{ background: 'linear-gradient(135deg, hsl(220, 60%, 8%), hsl(260, 50%, 12%))' }}
+      style={{
+        backgroundImage: 'url(/wallpapers/mountain-sunset.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
       onClick={() => { if (!showInput) setShowInput(true); }}
     >
+      {/* Overlay for readability */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       {/* Time */}
-      <div className="animate-boot-in flex flex-col items-center gap-2 mb-12">
+      <div className="relative z-10 animate-boot-in flex flex-col items-center gap-2 mb-12">
         <h1 className="text-7xl font-light tracking-tight" style={{ color: 'hsl(210, 20%, 92%)' }}>
           {formatTime(time)}
         </h1>
@@ -109,7 +115,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
       </div>
 
       {/* Avatar + name */}
-      <div className="flex flex-col items-center gap-4 mb-6">
+      <div className="relative z-10 flex flex-col items-center gap-4 mb-6">
         <div
           className="w-20 h-20 rounded-full flex items-center justify-center"
           style={{ background: 'linear-gradient(135deg, hsl(217, 91%, 50%), hsl(260, 80%, 55%))' }}
@@ -123,7 +129,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
 
       {/* Auth input area */}
       {showInput ? (
-        <div className={`flex flex-col items-center gap-4 w-72 ${shake ? 'animate-shake' : ''}`}>
+        <div className={`relative z-10 flex flex-col items-center gap-4 w-72 ${shake ? 'animate-shake' : ''}`}>
           {/* Mode toggle */}
           <div className="flex gap-2 mb-1">
             <button
@@ -223,7 +229,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
       ) : (
         <button
           onClick={(e) => { e.stopPropagation(); setShowInput(true); }}
-          className="px-8 py-2.5 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105"
+          className="relative z-10 px-8 py-2.5 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105"
           style={{
             background: 'hsla(217, 91%, 60%, 0.2)',
             border: '1px solid hsla(217, 91%, 60%, 0.4)',
@@ -236,7 +242,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
       )}
 
       {!showInput && (
-        <p className="absolute bottom-8 text-xs animate-pulse" style={{ color: 'hsl(220, 15%, 40%)' }}>
+        <p className="absolute bottom-8 text-xs animate-pulse z-10" style={{ color: 'hsl(220, 15%, 40%)' }}>
           Click anywhere to unlock
         </p>
       )}
