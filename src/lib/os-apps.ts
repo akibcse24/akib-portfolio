@@ -4,6 +4,7 @@ export interface OsApp {
   icon: string; // lucide icon name
   iconColor: string;
   iconBg: string;
+  iconImage?: string; // URL to actual logo image
   type: 'browser' | 'native';
   url?: string;
   description?: string;
@@ -17,6 +18,7 @@ export const osApps: OsApp[] = [
     icon: 'Network',
     iconColor: '#60a5fa',
     iconBg: 'linear-gradient(135deg, #1e3a5f, #2563eb)',
+    iconImage: 'https://cn.akib.qzz.io/logo.png',
     type: 'browser',
     url: 'https://cn.akib.qzz.io',
     description: 'Visual Knowledge Base & Infinite Canvas',
@@ -28,6 +30,7 @@ export const osApps: OsApp[] = [
     icon: 'Target',
     iconColor: '#34d399',
     iconBg: 'linear-gradient(135deg, #064e3b, #059669)',
+    iconImage: 'https://rt.akib.qzz.io/logo.jpg',
     type: 'browser',
     url: 'https://rt.akib.qzz.io',
     description: 'Premium Routine Tracking',
@@ -39,6 +42,7 @@ export const osApps: OsApp[] = [
     icon: 'Wallet',
     iconColor: '#fbbf24',
     iconBg: 'linear-gradient(135deg, #78350f, #d97706)',
+    iconImage: 'https://hk.akib.qzz.io/assets/logo-dEJ6j4Gy.png',
     type: 'browser',
     url: 'https://hk.akib.qzz.io',
     description: 'Credit & Loan Tracker',
