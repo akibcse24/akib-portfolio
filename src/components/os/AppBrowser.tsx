@@ -197,8 +197,8 @@ const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
   useEffect(() => {
     const tid = tabs[0]?.id;
     if (tid) {
-      setHistory({ [tid]: { urls: [initialUrl], index: 0 } });
-      loadUrl(initialUrl, tid);
+      setHistory({ [tid]: { urls: [effectiveInitial], index: 0 } });
+      loadUrl(effectiveInitial, tid);
     }
   }, [initialUrl]);
 
