@@ -10,7 +10,7 @@ export interface Wallpaper {
 }
 
 const wallpapers: Wallpaper[] = [
-  { name: 'Mountain Sunset', type: 'image', image: '/wallpapers/mountain-sunset.png' },
+  { name: 'Mountain Sunset', type: 'image', image: '/wallpapers/mountain-sunset.jpg' },
   { name: 'Plasma Flow', type: 'image', image: '/wallpapers/plasma-flow.jpg' },
   { name: 'Nebula', type: 'image', image: '/wallpapers/plasma-nebula.jpg' },
   { name: 'Ember', type: 'image', image: '/wallpapers/plasma-ember.jpg' },
