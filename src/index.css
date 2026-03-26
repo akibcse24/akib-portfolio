@@ -123,4 +123,11 @@
 .animate-boot-in { animation: boot-fade-in 0.8s ease-out forwards; }
 .animate-boot-out { animation: boot-fade-out 0.5s ease-in forwards; }
 .animate-window-open { animation: window-open 0.2s ease-out forwards; }
+.animate-window-close { animation: window-close 0.2s ease-in forwards; }
 .animate-slide-up { animation: slide-up 0.25s ease-out forwards; }
+.animate-scale-in { animation: scale-in 0.15s ease-out forwards; }
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
