@@ -6,6 +6,7 @@ import { playClickSound, playCloseSound } from '@/lib/sounds';
 interface WindowProps {
   win: WindowState;
   children: React.ReactNode;
+  taskbarHidden?: boolean;
   onClose: () => void;
   onMinimize: () => void;
   onMaximize: () => void;
@@ -15,7 +16,7 @@ interface WindowProps {
   onSnapPreview?: (zone: 'left' | 'right' | 'top' | null) => void;
 }
 
-const Window = ({ win, children, onClose, onMinimize, onMaximize, onFocus, onMove, onResize, onSnapPreview }: WindowProps) => {
+const Window = ({ win, children, taskbarHidden, onClose, onMinimize, onMaximize, onFocus, onMove, onResize, onSnapPreview }: WindowProps) => {
   const dragRef = useRef<{ startX: number; startY: number; winX: number; winY: number } | null>(null);
   const resizeRef = useRef<{ startX: number; startY: number; winW: number; winH: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -99,7 +100,7 @@ const Window = ({ win, children, onClose, onMinimize, onMaximize, onFocus, onMov
   if (win.minimized) return null;
 
   const style: React.CSSProperties = win.maximized
-    ? { top: 0, left: 0, width: '100%', height: 'calc(100% - 48px)', zIndex: win.zIndex }
+    ? { top: 0, left: 0, width: '100%', height: taskbarHidden ? '100%' : 'calc(100% - 56px)', zIndex: win.zIndex }
     : { top: win.y, left: win.x, width: win.width, height: win.height, zIndex: win.zIndex };
 
   const isFocused = true; // simplified — topmost window

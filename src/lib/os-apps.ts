@@ -9,6 +9,7 @@ export interface OsApp {
   url?: string;
   description?: string;
   desktopShortcut?: boolean;
+  iframeBlocked?: boolean; // true if the site blocks iframe embedding
 }
 
 export const osApps: OsApp[] = [
@@ -35,6 +36,7 @@ export const osApps: OsApp[] = [
     url: 'https://rt.akib.qzz.io',
     description: 'Premium Routine Tracking',
     desktopShortcut: true,
+    iframeBlocked: true,
   },
   {
     id: 'hisabkhata',
