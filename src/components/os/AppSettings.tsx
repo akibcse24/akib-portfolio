@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Monitor, Palette, Info } from 'lucide-react';
+import { Monitor, Palette, Info, User, HardDrive, Keyboard } from 'lucide-react';
+import { vfs } from '@/lib/virtual-fs';
 
 export interface Wallpaper {
   name: string;
@@ -28,24 +29,53 @@ interface AppSettingsProps {
 }
 
 const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) => {
-  const [tab, setTab] = useState<'display' | 'about'>('display');
+  const [tab, setTab] = useState<'display' | 'user' | 'storage' | 'shortcuts' | 'about'>('display');
+  const [username, setUsername] = useState(() => localStorage.getItem('akibos-username') || 'Akib');
+  const [accentHue, setAccentHue] = useState(() => parseInt(localStorage.getItem('akibos-accent-hue') || '217'));
+
+  const handleUsernameChange = (name: string) => {
+    setUsername(name);
+    localStorage.setItem('akibos-username', name);
+  };
+
+  const handleAccentChange = (hue: number) => {
+    setAccentHue(hue);
+    localStorage.setItem('akibos-accent-hue', String(hue));
+    document.documentElement.style.setProperty('--os-accent-hue', String(hue));
+  };
+
+  const stats = vfs.getStats();
+
+  const shortcuts = [
+    { keys: 'Alt + F4', action: 'Close active window' },
+    { keys: 'Alt + Tab', action: 'Switch windows' },
+    { keys: 'Ctrl + S', action: 'Save file (Text Editor)' },
+    { keys: 'Tab', action: 'Autocomplete (Terminal)' },
+    { keys: 'Escape', action: 'Close menu / dialog' },
+    { keys: 'Super / Meta', action: 'Toggle Start Menu' },
+  ];
+
+  const tabs = [
+    { id: 'display' as const, icon: Monitor, label: 'Display' },
+    { id: 'user' as const, icon: User, label: 'User' },
+    { id: 'storage' as const, icon: HardDrive, label: 'Storage' },
+    { id: 'shortcuts' as const, icon: Keyboard, label: 'Shortcuts' },
+    { id: 'about' as const, icon: Info, label: 'About' },
+  ];
 
   return (
     <div className="flex h-full">
       {/* Sidebar */}
       <div className="w-44 border-r border-os-panel-border p-2 space-y-0.5 shrink-0">
-        <button
-          onClick={() => setTab('display')}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${tab === 'display' ? 'bg-os-accent text-white' : 'text-os-window-body-foreground hover:bg-white/5'}`}
-        >
-          <Monitor size={14} /> Display
-        </button>
-        <button
-          onClick={() => setTab('about')}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${tab === 'about' ? 'bg-os-accent text-white' : 'text-os-window-body-foreground hover:bg-white/5'}`}
-        >
-          <Info size={14} /> About
-        </button>
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${tab === t.id ? 'bg-os-accent text-white' : 'text-os-window-body-foreground hover:bg-white/5'}`}
+          >
+            <t.icon size={14} /> {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Content */}
@@ -55,7 +85,7 @@ const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) =>
             <h3 className="text-sm font-semibold text-os-window-body-foreground mb-3 flex items-center gap-2">
               <Palette size={16} /> Wallpaper
             </h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 mb-6">
               {wallpapers.map((wp, i) => (
                 <button
                   key={i}
@@ -70,8 +100,76 @@ const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) =>
                 </button>
               ))}
             </div>
+
+            <h3 className="text-sm font-semibold text-os-window-body-foreground mb-3">Accent Color</h3>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="0"
+                max="360"
+                value={accentHue}
+                onChange={e => handleAccentChange(parseInt(e.target.value))}
+                className="flex-1 h-2 rounded-full appearance-none cursor-pointer"
+                style={{ background: `linear-gradient(to right, hsl(0,80%,55%), hsl(60,80%,55%), hsl(120,80%,55%), hsl(180,80%,55%), hsl(240,80%,55%), hsl(300,80%,55%), hsl(360,80%,55%))` }}
+              />
+              <div className="w-8 h-8 rounded-lg" style={{ background: `hsl(${accentHue}, 91%, 60%)` }} />
+            </div>
           </div>
         )}
+
+        {tab === 'user' && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-os-window-body-foreground">User Profile</h3>
+            <div>
+              <label className="text-xs text-os-window-body-foreground opacity-60 mb-1 block">Display Name</label>
+              <input
+                className="w-full px-3 py-2 rounded text-xs bg-black/30 text-os-window-body-foreground outline-none border border-os-panel-border"
+                value={username}
+                onChange={e => handleUsernameChange(e.target.value)}
+              />
+              <p className="text-[10px] mt-1 opacity-40 text-os-window-body-foreground">Shown on lock screen, terminal prompt, and system info</p>
+            </div>
+          </div>
+        )}
+
+        {tab === 'storage' && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-os-window-body-foreground">Storage</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="p-3 rounded-lg bg-white/5">
+                <div className="text-2xl font-bold text-os-window-body-foreground">{stats.files}</div>
+                <div className="text-[10px] opacity-50 text-os-window-body-foreground">Files</div>
+              </div>
+              <div className="p-3 rounded-lg bg-white/5">
+                <div className="text-2xl font-bold text-os-window-body-foreground">{stats.dirs}</div>
+                <div className="text-[10px] opacity-50 text-os-window-body-foreground">Folders</div>
+              </div>
+              <div className="p-3 rounded-lg bg-white/5">
+                <div className="text-2xl font-bold text-os-window-body-foreground">{(stats.totalSize / 1024).toFixed(1)}</div>
+                <div className="text-[10px] opacity-50 text-os-window-body-foreground">KB Used</div>
+              </div>
+            </div>
+            <button
+              onClick={() => { vfs.reset(); }}
+              className="px-3 py-2 rounded text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+            >
+              Reset Filesystem
+            </button>
+          </div>
+        )}
+
+        {tab === 'shortcuts' && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-os-window-body-foreground mb-3">Keyboard Shortcuts</h3>
+            {shortcuts.map((s, i) => (
+              <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-white/5">
+                <span className="text-xs text-os-window-body-foreground opacity-70">{s.action}</span>
+                <kbd className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-os-window-body-foreground font-mono">{s.keys}</kbd>
+              </div>
+            ))}
+          </div>
+        )}
+
         {tab === 'about' && (
           <div className="space-y-3 text-os-window-body-foreground">
             <div className="flex items-center gap-3">
@@ -94,6 +192,7 @@ const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) =>
               <p>Desktop Environment: Plasma Web</p>
               <p>Kernel: Browser Engine</p>
               <p>Architecture: WebAssembly-compatible</p>
+              <p>User: {username}</p>
             </div>
           </div>
         )}
