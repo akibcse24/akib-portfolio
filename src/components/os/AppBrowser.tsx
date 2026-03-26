@@ -24,15 +24,21 @@ const BOOKMARKS_KEY = 'akibos-browser-bookmarks';
 
 let tabCounter = 0;
 
-const AppBrowser = ({ initialUrl = HOMEPAGE }: AppBrowserProps) => {
+const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
+  const [searchEngine, setSearchEngine] = useState<SearchEngine>(() => {
+    return (localStorage.getItem(SEARCH_ENGINE_KEY) as SearchEngine) || 'duckduckgo';
+  });
+  const homepage = SEARCH_ENGINES[searchEngine].url;
+  const effectiveInitial = initialUrl || homepage;
+
   const [tabs, setTabs] = useState<BrowserTab[]>(() => {
     tabCounter++;
-    return [{ id: `tab-${tabCounter}`, url: initialUrl, title: 'Loading...', loading: true }];
+    return [{ id: `tab-${tabCounter}`, url: effectiveInitial, title: 'Loading...', loading: true }];
   });
   const [activeTabId, setActiveTabId] = useState(`tab-${tabCounter}`);
-  const [inputUrl, setInputUrl] = useState(initialUrl);
+  const [inputUrl, setInputUrl] = useState(effectiveInitial);
   const [history, setHistory] = useState<Record<string, { urls: string[]; index: number }>>({});
-  const [proxyMode, setProxyMode] = useState(false); // default off for better UX
+  const [proxyMode, setProxyMode] = useState(false);
   const [proxyHtml, setProxyHtml] = useState<string | null>(null);
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [bookmarks, setBookmarks] = useState<{ url: string; title: string }[]>(() => {
@@ -43,7 +49,7 @@ const AppBrowser = ({ initialUrl = HOMEPAGE }: AppBrowserProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
-  const tabHistory = history[activeTabId] || { urls: [activeTab?.url || HOMEPAGE], index: 0 };
+  const tabHistory = history[activeTabId] || { urls: [activeTab?.url || homepage], index: 0 };
 
   const isKnownBlocked = (checkUrl: string) => {
     try {
