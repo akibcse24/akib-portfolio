@@ -304,6 +304,22 @@ const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
         >
           {proxyMode ? <Shield size={14} className="text-os-accent" /> : <ShieldOff size={14} className="text-os-window-chrome-foreground/50" />}
         </button>
+
+        {/* Search engine selector */}
+        <select
+          value={searchEngine}
+          onChange={(e) => {
+            const eng = e.target.value as SearchEngine;
+            setSearchEngine(eng);
+            localStorage.setItem(SEARCH_ENGINE_KEY, eng);
+          }}
+          className="h-7 px-1 rounded text-[10px] bg-transparent text-os-window-chrome-foreground border border-os-panel-border outline-none cursor-pointer hover:bg-white/10"
+          title="Search engine"
+        >
+          {Object.entries(SEARCH_ENGINES).map(([key, val]) => (
+            <option key={key} value={key} className="bg-os-window-chrome text-os-window-chrome-foreground">{val.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* Bookmarks bar */}
