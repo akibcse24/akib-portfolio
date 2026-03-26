@@ -51,12 +51,8 @@ const Window = ({ win, children, taskbarHidden, onClose, onMinimize, onMaximize,
     }
   }, []);
 
-  // Listen for fullscreen exit
-  const handleFullscreenChange = useCallback(() => {
-    if (!document.fullscreenElement) {
-      setIsFullscreen(false);
-    }
-  }, []);
+
+
 
   const handleMouseDownDrag = useCallback((e: React.MouseEvent) => {
     if (win.maximized || isFullscreen) return;
