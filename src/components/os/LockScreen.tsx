@@ -129,7 +129,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
 
       {/* Auth input area */}
       {showInput ? (
-        <div className={`flex flex-col items-center gap-4 w-72 ${shake ? 'animate-shake' : ''}`}>
+        <div className={`relative z-10 flex flex-col items-center gap-4 w-72 ${shake ? 'animate-shake' : ''}`}>
           {/* Mode toggle */}
           <div className="flex gap-2 mb-1">
             <button
