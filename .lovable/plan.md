@@ -1,39 +1,92 @@
 
 
-# AkibOS — Fix iframe blocking, merge dock into taskbar, auto-hide taskbar
+# AkibOS — Real OS Features Enhancement
 
-## Three Changes
+## Overview
+Transform AkibOS from a visual demo into a functional web OS with persistent state, a real virtual filesystem, interconnected apps, and interactive system controls.
 
-### 1. Fix rt.akib.qzz.io iframe blocking
-**Problem**: `rt.akib.qzz.io` sends `X-Frame-Options: DENY` or `Content-Security-Policy: frame-ancestors 'none'`, which blocks iframe embedding. This is a server-side header — it cannot be bypassed from the client.
+## Features
 
-**Solution**: Use a CORS/frame proxy. When a site refuses to load in an iframe, route it through a public proxy like `https://corsproxy.io/?url=` or alternatively detect the load failure and open the site in a new browser tab instead. The most reliable approach:
-- Add an `onError` / load-failure detection in `AppBrowser.tsx`
-- For known blocked sites, prepend a proxy URL **or** show a fallback UI with a "Open in new tab" button
-- Update `os-apps.ts` to flag apps that need proxy or external opening
+### 1. Virtual Filesystem (localStorage-backed)
+Create a real in-memory filesystem that persists to localStorage. All apps (File Manager, Text Editor, Terminal) share this filesystem.
+- `src/lib/virtual-fs.ts` — VFS class with `readFile`, `writeFile`, `mkdir`, `ls`, `rm`, `stat`, `readDir`
+- Pre-seeded with `/home/akib/Documents/`, `/home/akib/Pictures/`, `/home/akib/Downloads/`, default files
+- All file operations persist to localStorage
 
-**Recommended approach**: Since proxy services can be unreliable, the cleanest solution is to detect iframe load failure and show a styled fallback page with the app's logo, description, and an "Open in New Tab" button. This is more robust than depending on a third-party proxy.
+### 2. File Manager — Real CRUD Operations
+Rewrite `AppFileManager.tsx` to use the VFS:
+- Browse folders, view files (grid + list view toggle)
+- Create new folder / new file via toolbar buttons
+- Rename files (double-click name)
+- Delete files (right-click context menu or Delete key)
+- Open `.txt` files in Text Editor (launches the app with file content)
+- Breadcrumb navigation bar showing current path
+- File size and modified date display
 
-### 2. Merge Dock into Taskbar
-- Remove the separate floating `Dock` component from `Desktop.tsx`
-- Move the dock app icons (with hover magnification) into the center of the `Taskbar`, between the Start button and the system tray
-- The window tabs move to a secondary row or are replaced by dot indicators under the dock icons when that app's window is open
-- Keep the magnification hover effect on the dock icons within the taskbar
+### 3. Text Editor — Open/Save Files
+Rewrite `AppTextEditor.tsx` to integrate with VFS:
+- Open files from File Manager or via File > Open dialog
+- Save files to VFS (Ctrl+S shortcut)
+- Save As dialog to choose path/name
+- Tab support for multiple open files
+- Unsaved changes indicator (dot on tab)
+- Syntax highlighting for basic formats (optional)
 
-### 3. Auto-hide Taskbar when a window is maximized
-- In `Desktop.tsx`, track whether any window is maximized (not minimized)
-- When a window is maximized/fullscreen, the taskbar slides down off-screen with a CSS transition
-- Moving the mouse to the very bottom of the screen reveals the taskbar (hover zone)
-- When no windows are maximized, the taskbar stays visible normally
+### 4. Terminal — Real Filesystem Commands
+Upgrade `AppTerminal.tsx` to operate on the VFS:
+- `ls`, `cd`, `pwd` work against the real VFS
+- `cat` reads file contents, `touch` creates files, `mkdir` creates directories
+- `rm` deletes files, `cp`/`mv` for copy/move
+- `echo "text" > file.txt` writes to files
+- Working directory tracking (`cd` changes it)
+- Tab completion for file/folder names
 
-## Files to Change
+### 5. System Tray — Interactive Controls
+Make the Wifi, Volume, Battery icons functional:
+- **Volume**: Click opens a slider popup, value persists, affects click sound volume
+- **Wifi**: Click toggles "connected/disconnected" with animation
+- **Battery**: Shows a slowly decreasing percentage (resets on "charge" toggle)
+- Each popup styled as a small floating panel
 
-| File | Change |
+### 6. Settings — More Panels
+Add new settings sections in `AppSettings.tsx`:
+- **Appearance**: Dark/light accent color picker (changes `--os-accent`)
+- **User**: Change display name (reflected on lock screen, terminal `whoami`)
+- **Storage**: Show VFS usage stats (files count, total size)
+- **Keyboard Shortcuts**: Reference list of all shortcuts
+
+### 7. Start Menu — Search & Categories
+Upgrade `StartMenu.tsx`:
+- Search bar at top that filters apps by name/description
+- Categorized sections: "Pinned", "All Apps"
+- Recent apps section (tracks last 3 opened apps)
+- Power button area: "Lock Screen", "Refresh" options
+
+### 8. Clipboard System
+- `Ctrl+C` / `Ctrl+V` within Text Editor and Terminal
+- Copy file paths in File Manager
+- Internal clipboard state shared across apps
+
+### 9. App Communication via Event Bus
+- `src/lib/event-bus.ts` — simple pub/sub for inter-app events
+- File Manager can "Open With" Text Editor
+- Terminal `open` command launches apps
+- Double-clicking a `.txt` in File Manager opens it in Text Editor
+
+## Technical Approach
+
+| Area | Files |
 |---|---|
-| `src/components/os/AppBrowser.tsx` | Add iframe error detection, show fallback UI with "Open in New Tab" for blocked sites |
-| `src/lib/os-apps.ts` | Add optional `iframeBlocked` flag to OsApp for known blocked sites |
-| `src/components/os/Taskbar.tsx` | Integrate dock icons with magnification into the center; accept `onLaunchApp` prop; add auto-hide logic via `hidden` prop |
-| `src/components/os/Dock.tsx` | Remove (no longer needed as separate component) |
-| `src/components/os/Desktop.tsx` | Remove `<Dock>`, pass `onLaunchApp` to Taskbar, compute `hasMaximizedWindow` for auto-hide, add bottom hover zone to reveal taskbar |
-| `src/components/os/Window.tsx` | Update maximized height from `calc(100% - 48px)` to `100%` when taskbar is hidden |
+| Virtual Filesystem | New `src/lib/virtual-fs.ts` |
+| Event Bus | New `src/lib/event-bus.ts` |
+| File Manager rewrite | `AppFileManager.tsx` |
+| Text Editor rewrite | `AppTextEditor.tsx` |
+| Terminal upgrade | `AppTerminal.tsx` |
+| System Tray popups | `Taskbar.tsx`, new `SystemTrayPopup.tsx` |
+| Settings expansion | `AppSettings.tsx` |
+| Start Menu upgrade | `StartMenu.tsx` |
+| Window Manager | `useWindowManager.ts` (add openWindow with initial data/props) |
+| Desktop | `Desktop.tsx` (wire event bus, pass file open callbacks) |
+
+All state persists in localStorage. No backend needed. Existing styling and animation patterns preserved.
 
