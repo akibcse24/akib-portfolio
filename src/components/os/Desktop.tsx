@@ -64,6 +64,7 @@ const Desktop = () => {
               iconName={app.icon}
               iconColor={app.iconColor}
               iconBg={app.iconBg}
+              iconImage={app.iconImage}
               onDoubleClick={() => launchApp(app)}
             />
           ))}

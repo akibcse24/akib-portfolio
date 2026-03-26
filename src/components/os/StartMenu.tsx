@@ -33,10 +33,14 @@ const StartMenu = ({ open, onClose, onLaunchApp }: StartMenuProps) => {
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/8 transition-colors group"
               >
                 <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform"
-                  style={{ background: app.iconBg }}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform overflow-hidden"
+                  style={{ background: app.iconImage ? 'transparent' : app.iconBg }}
                 >
-                  {IconComp && <IconComp size={18} color={app.iconColor} />}
+                  {app.iconImage ? (
+                    <img src={app.iconImage} alt={app.name} className="w-full h-full object-contain" />
+                  ) : (
+                    IconComp && <IconComp size={18} color={app.iconColor} />
+                  )}
                 </div>
                 <div className="text-left">
                   <div className="text-xs font-medium" style={{ color: 'hsl(210, 20%, 92%)' }}>{app.name}</div>
