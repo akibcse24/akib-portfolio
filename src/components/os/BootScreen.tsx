@@ -1,12 +1,27 @@
 import { useEffect, useState } from 'react';
+import { playBootChime } from '@/lib/sounds';
 
 interface BootScreenProps {
   onBootComplete: () => void;
 }
 
+const bootLogs = [
+  '[OK] Starting AkibOS kernel 6.2.0...',
+  '[OK] Initializing hardware abstraction layer',
+  '[OK] Loading device drivers',
+  '[OK] Mounting root filesystem',
+  '[OK] Starting system services',
+  '[OK] Initializing network stack',
+  '[OK] Loading desktop environment',
+  '[OK] Starting compositor',
+  '[OK] Applying user preferences',
+  '[OK] Desktop ready',
+];
+
 const BootScreen = ({ onBootComplete }: BootScreenProps) => {
   const [progress, setProgress] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
+  const [visibleLogs, setVisibleLogs] = useState<string[]>([]);
 
   useEffect(() => {
     const duration = 3000;
@@ -17,6 +32,7 @@ const BootScreen = ({ onBootComplete }: BootScreenProps) => {
         const next = prev + step + (Math.random() * step * 0.5);
         if (next >= 100) {
           clearInterval(timer);
+          playBootChime();
           setTimeout(() => {
             setFadeOut(true);
             setTimeout(onBootComplete, 500);
@@ -29,13 +45,28 @@ const BootScreen = ({ onBootComplete }: BootScreenProps) => {
     return () => clearInterval(timer);
   }, [onBootComplete]);
 
+  // Show logs based on progress
+  useEffect(() => {
+    const logCount = Math.floor((progress / 100) * bootLogs.length);
+    setVisibleLogs(bootLogs.slice(0, logCount));
+  }, [progress]);
+
   return (
     <div
-      className={`fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[hsl(220,60%,5%)] to-[hsl(240,50%,10%)] z-[9999] transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
+      className={`fixed inset-0 flex flex-col items-center justify-center z-[9999] transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
+      style={{ background: 'linear-gradient(135deg, hsl(220, 60%, 5%), hsl(240, 50%, 10%))' }}
     >
+      {/* Terminal logs behind */}
+      <div className="absolute inset-x-0 top-8 bottom-1/2 px-12 overflow-hidden opacity-30 pointer-events-none">
+        <div className="font-mono text-[10px] leading-relaxed" style={{ color: 'hsl(142, 71%, 55%)' }}>
+          {visibleLogs.map((log, i) => (
+            <div key={i} className="animate-slide-up">{log}</div>
+          ))}
+        </div>
+      </div>
+
       {/* Logo */}
-      <div className="animate-boot-in flex flex-col items-center gap-6">
-        {/* AkibOS Logo SVG */}
+      <div className="animate-boot-in flex flex-col items-center gap-6 z-10">
         <div className="animate-boot-pulse">
           <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
             <defs>
@@ -56,7 +87,6 @@ const BootScreen = ({ onBootComplete }: BootScreenProps) => {
           AkibOS
         </h1>
 
-        {/* Progress bar */}
         <div className="w-64 h-1 rounded-full overflow-hidden" style={{ background: 'hsl(220, 20%, 15%)' }}>
           <div
             className="h-full rounded-full transition-all duration-100"
