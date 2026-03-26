@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import { icons } from 'lucide-react';
-import { Wifi, Volume2, ChevronUp } from 'lucide-react';
+import { Wifi, Volume2, ChevronUp, Battery } from 'lucide-react';
 import type { WindowState } from '@/hooks/useWindowManager';
 import { osApps } from '@/lib/os-apps';
+import NotificationCenter, { type Notification } from './NotificationCenter';
 
 interface TaskbarProps {
   windows: WindowState[];
   onWindowFocus: (id: string) => void;
   onStartMenuToggle: () => void;
   startMenuOpen: boolean;
+  notifications: Notification[];
+  onRemoveNotification: (id: string) => void;
 }
 
-const Taskbar = ({ windows, onWindowFocus, onStartMenuToggle, startMenuOpen }: TaskbarProps) => {
+const Taskbar = ({ windows, onWindowFocus, onStartMenuToggle, startMenuOpen, notifications, onRemoveNotification }: TaskbarProps) => {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -26,7 +29,7 @@ const Taskbar = ({ windows, onWindowFocus, onStartMenuToggle, startMenuOpen }: T
     <div className="h-12 flex items-center px-2 gap-1 bg-os-panel/90 backdrop-blur-xl border-t border-os-panel-border shrink-0 select-none" style={{ zIndex: 9000 }}>
       {/* Start button */}
       <button
-        onClick={onStartMenuToggle}
+        onClick={(e) => { e.stopPropagation(); onStartMenuToggle(); }}
         className={`h-8 px-3 rounded flex items-center gap-1.5 text-xs font-medium transition-colors ${startMenuOpen ? 'bg-os-accent text-white' : 'text-os-panel-foreground hover:bg-white/10'}`}
       >
         <svg width="16" height="16" viewBox="0 0 80 80" fill="none">
@@ -57,8 +60,10 @@ const Taskbar = ({ windows, onWindowFocus, onStartMenuToggle, startMenuOpen }: T
       {/* System tray */}
       <div className="flex items-center gap-2 text-os-panel-foreground">
         <ChevronUp size={13} className="opacity-50" />
+        <NotificationCenter notifications={notifications} onRemove={onRemoveNotification} />
         <Wifi size={14} className="opacity-70" />
         <Volume2 size={14} className="opacity-70" />
+        <Battery size={14} className="opacity-70" />
         <div className="text-right pl-2">
           <div className="text-[11px] font-medium">{formatTime(time)}</div>
           <div className="text-[9px] opacity-50">{formatDate(time)}</div>

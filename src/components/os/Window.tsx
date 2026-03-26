@@ -1,6 +1,7 @@
 import { useRef, useCallback, useState } from 'react';
 import { X, Minus, Maximize2, Minimize2 } from 'lucide-react';
 import type { WindowState } from '@/hooks/useWindowManager';
+import { playClickSound, playCloseSound } from '@/lib/sounds';
 
 interface WindowProps {
   win: WindowState;
@@ -11,12 +12,20 @@ interface WindowProps {
   onFocus: () => void;
   onMove: (x: number, y: number) => void;
   onResize: (w: number, h: number) => void;
+  onSnapPreview?: (zone: 'left' | 'right' | 'top' | null) => void;
 }
 
-const Window = ({ win, children, onClose, onMinimize, onMaximize, onFocus, onMove, onResize }: WindowProps) => {
+const Window = ({ win, children, onClose, onMinimize, onMaximize, onFocus, onMove, onResize, onSnapPreview }: WindowProps) => {
   const dragRef = useRef<{ startX: number; startY: number; winX: number; winY: number } | null>(null);
   const resizeRef = useRef<{ startX: number; startY: number; winW: number; winH: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  const handleClose = useCallback(() => {
+    playCloseSound();
+    setClosing(true);
+    setTimeout(onClose, 200);
+  }, [onClose]);
 
   const handleMouseDownDrag = useCallback((e: React.MouseEvent) => {
     if (win.maximized) return;
@@ -30,8 +39,29 @@ const Window = ({ win, children, onClose, onMinimize, onMaximize, onFocus, onMov
       const dx = ev.clientX - dragRef.current.startX;
       const dy = ev.clientY - dragRef.current.startY;
       onMove(dragRef.current.winX + dx, Math.max(0, dragRef.current.winY + dy));
+
+      // Snap zone detection
+      if (onSnapPreview) {
+        if (ev.clientX <= 4) onSnapPreview('left');
+        else if (ev.clientX >= window.innerWidth - 4) onSnapPreview('right');
+        else if (ev.clientY <= 4) onSnapPreview('top');
+        else onSnapPreview(null);
+      }
     };
-    const handleMouseUp = () => {
+    const handleMouseUp = (ev: MouseEvent) => {
+      // Apply snap
+      if (onSnapPreview) {
+        if (ev.clientX <= 4) {
+          onMove(0, 0);
+          onResize(window.innerWidth / 2, window.innerHeight - 48);
+        } else if (ev.clientX >= window.innerWidth - 4) {
+          onMove(window.innerWidth / 2, 0);
+          onResize(window.innerWidth / 2, window.innerHeight - 48);
+        } else if (ev.clientY <= 4) {
+          onMaximize();
+        }
+        onSnapPreview(null);
+      }
       dragRef.current = null;
       setIsDragging(false);
       document.removeEventListener('mousemove', handleMouseMove);
@@ -39,7 +69,11 @@ const Window = ({ win, children, onClose, onMinimize, onMaximize, onFocus, onMov
     };
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [win.maximized, win.x, win.y, onFocus, onMove]);
+  }, [win.maximized, win.x, win.y, onFocus, onMove, onResize, onMaximize, onSnapPreview]);
+
+  const handleDoubleClickTitleBar = useCallback(() => {
+    onMaximize();
+  }, [onMaximize]);
 
   const handleMouseDownResize = useCallback((e: React.MouseEvent) => {
     if (win.maximized) return;
@@ -68,27 +102,35 @@ const Window = ({ win, children, onClose, onMinimize, onMaximize, onFocus, onMov
     ? { top: 0, left: 0, width: '100%', height: 'calc(100% - 48px)', zIndex: win.zIndex }
     : { top: win.y, left: win.x, width: win.width, height: win.height, zIndex: win.zIndex };
 
+  const isFocused = true; // simplified — topmost window
+
   return (
     <div
-      className="absolute animate-window-open flex flex-col rounded-lg overflow-hidden shadow-2xl border border-os-panel-border"
-      style={style}
+      className={`absolute flex flex-col rounded-lg overflow-hidden border border-os-panel-border ${closing ? 'animate-window-close' : 'animate-window-open'}`}
+      style={{
+        ...style,
+        boxShadow: isFocused
+          ? '0 12px 40px -8px hsla(0, 0%, 0%, 0.6), 0 0 0 1px hsla(217, 91%, 60%, 0.1)'
+          : '0 6px 20px -4px hsla(0, 0%, 0%, 0.4)',
+      }}
       onMouseDown={onFocus}
     >
       {/* Title bar */}
       <div
         className="h-9 flex items-center justify-between px-3 shrink-0 bg-os-window-chrome select-none"
         onMouseDown={handleMouseDownDrag}
+        onDoubleClick={handleDoubleClickTitleBar}
         style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       >
         <span className="text-xs font-medium text-os-window-chrome-foreground truncate">{win.title}</span>
         <div className="flex items-center gap-1">
-          <button onClick={onMinimize} className="w-6 h-6 rounded flex items-center justify-center hover:bg-white/10 transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); playClickSound(); onMinimize(); }} className="w-6 h-6 rounded flex items-center justify-center hover:bg-white/10 transition-colors">
             <Minus size={13} className="text-os-window-chrome-foreground" />
           </button>
-          <button onClick={onMaximize} className="w-6 h-6 rounded flex items-center justify-center hover:bg-white/10 transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); onMaximize(); }} className="w-6 h-6 rounded flex items-center justify-center hover:bg-white/10 transition-colors">
             {win.maximized ? <Minimize2 size={13} className="text-os-window-chrome-foreground" /> : <Maximize2 size={13} className="text-os-window-chrome-foreground" />}
           </button>
-          <button onClick={onClose} className="w-6 h-6 rounded flex items-center justify-center hover:bg-red-500/80 transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); handleClose(); }} className="w-6 h-6 rounded flex items-center justify-center hover:bg-red-500/80 transition-colors">
             <X size={13} className="text-os-window-chrome-foreground" />
           </button>
         </div>
