@@ -59,8 +59,8 @@ const AppTextEditor = ({ initialFilePath }: AppTextEditorProps) => {
   // Listen for file open events
   useEffect(() => {
     const handler = ({ path }: { path: string }) => openFile(path);
-    // Direct call support - check if we have initialFilePath set after mount
-    return eventBus.on(OS_EVENTS.OPEN_FILE, handler);
+    const unsub = eventBus.on(OS_EVENTS.OPEN_FILE, handler);
+    return () => { unsub(); };
   }, [openFile]);
 
   const activeTab = tabs.find(t => t.id === activeTabId);

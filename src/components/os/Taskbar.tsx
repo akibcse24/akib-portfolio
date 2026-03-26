@@ -4,6 +4,7 @@ import { Wifi, Volume2, ChevronUp, Battery } from 'lucide-react';
 import type { WindowState } from '@/hooks/useWindowManager';
 import { osApps, OsApp } from '@/lib/os-apps';
 import NotificationCenter, { type Notification } from './NotificationCenter';
+import SystemTrayPopup from './SystemTrayPopup';
 
 interface TaskbarProps {
   windows: WindowState[];
@@ -22,6 +23,7 @@ const dockAppIds = ['ctxnote', 'routine-tracker', 'hisabkhata', 'browser', 'file
 const Taskbar = ({ windows, onWindowFocus, onStartMenuToggle, startMenuOpen, notifications, onRemoveNotification, onLaunchApp, hidden, onReveal }: TaskbarProps) => {
   const [time, setTime] = useState(new Date());
   const [hoveredDockIndex, setHoveredDockIndex] = useState<number | null>(null);
+  const [trayPopup, setTrayPopup] = useState<'volume' | 'wifi' | 'battery' | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -41,12 +43,14 @@ const Taskbar = ({ windows, onWindowFocus, onStartMenuToggle, startMenuOpen, not
     return 1;
   };
 
-  // Check if an app has an open window
   const hasOpenWindow = (appId: string) => windows.some(w => w.appId === appId && !w.minimized);
+
+  const toggleTray = (type: 'volume' | 'wifi' | 'battery') => {
+    setTrayPopup(prev => prev === type ? null : type);
+  };
 
   return (
     <>
-      {/* Bottom hover zone to reveal taskbar when hidden */}
       {hidden && (
         <div
           className="fixed bottom-0 left-0 right-0 h-2 z-[9100]"
@@ -73,7 +77,7 @@ const Taskbar = ({ windows, onWindowFocus, onStartMenuToggle, startMenuOpen, not
           Start
         </button>
 
-        {/* Window tabs (compact) */}
+        {/* Window tabs */}
         <div className="flex items-center gap-0.5 overflow-x-auto mx-1 shrink-0">
           {windows.map(win => {
             const app = osApps.find(a => a.id === win.appId);
@@ -91,7 +95,7 @@ const Taskbar = ({ windows, onWindowFocus, onStartMenuToggle, startMenuOpen, not
           })}
         </div>
 
-        {/* Dock icons (center) */}
+        {/* Dock icons */}
         <div className="flex-1 flex items-center justify-center">
           <div
             className="flex items-end gap-1 px-2 py-1 rounded-xl"
@@ -124,7 +128,6 @@ const Taskbar = ({ windows, onWindowFocus, onStartMenuToggle, startMenuOpen, not
                       <IconComp size={18} color={app.iconColor} />
                     ) : null}
                   </div>
-                  {/* Active dot */}
                   {isOpen && (
                     <div className="w-1 h-1 rounded-full bg-os-accent mt-0.5" />
                   )}
@@ -135,16 +138,25 @@ const Taskbar = ({ windows, onWindowFocus, onStartMenuToggle, startMenuOpen, not
         </div>
 
         {/* System tray */}
-        <div className="flex items-center gap-2 text-os-panel-foreground shrink-0">
+        <div className="flex items-center gap-2 text-os-panel-foreground shrink-0 relative">
           <ChevronUp size={13} className="opacity-50" />
           <NotificationCenter notifications={notifications} onRemove={onRemoveNotification} />
-          <Wifi size={14} className="opacity-70" />
-          <Volume2 size={14} className="opacity-70" />
-          <Battery size={14} className="opacity-70" />
+          <button onClick={() => toggleTray('wifi')} className="opacity-70 hover:opacity-100 transition-opacity">
+            <Wifi size={14} />
+          </button>
+          <button onClick={() => toggleTray('volume')} className="opacity-70 hover:opacity-100 transition-opacity">
+            <Volume2 size={14} />
+          </button>
+          <button onClick={() => toggleTray('battery')} className="opacity-70 hover:opacity-100 transition-opacity">
+            <Battery size={14} />
+          </button>
           <div className="text-right pl-2">
             <div className="text-[11px] font-medium">{formatTime(time)}</div>
             <div className="text-[9px] opacity-50">{formatDate(time)}</div>
           </div>
+          {trayPopup && (
+            <SystemTrayPopup type={trayPopup} onClose={() => setTrayPopup(null)} />
+          )}
         </div>
       </div>
     </>
