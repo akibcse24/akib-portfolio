@@ -1,13 +1,15 @@
-// Virtual Filesystem — localStorage-backed, shared across all apps
+// Virtual Filesystem — localStorage-backed with Supabase sync
+
+import { saveOsData, loadOrFallback } from './os-persistence';
 
 export interface FSNode {
   name: string;
   type: 'file' | 'directory';
-  content?: string; // only for files
+  content?: string;
   size: number;
   createdAt: number;
   modifiedAt: number;
-  children?: Record<string, FSNode>; // only for directories
+  children?: Record<string, FSNode>;
 }
 
 const STORAGE_KEY = 'akibos-vfs';
@@ -73,22 +75,37 @@ function buildDefaultFS(): FSNode {
 class VirtualFS {
   private root: FSNode;
   private listeners: Set<() => void> = new Set();
+  private initialized = false;
 
   constructor() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      try {
-        this.root = JSON.parse(saved);
-      } catch {
-        this.root = buildDefaultFS();
-      }
+      try { this.root = JSON.parse(saved); } catch { this.root = buildDefaultFS(); }
     } else {
       this.root = buildDefaultFS();
     }
+    // Async load from backend
+    this.initFromBackend();
+  }
+
+  private async initFromBackend() {
+    try {
+      const remote = await loadOrFallback('vfs', null);
+      if (remote) {
+        this.root = remote;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.root));
+        this.listeners.forEach(fn => fn());
+      } else {
+        // First time — push to backend
+        saveOsData('vfs', this.root);
+      }
+    } catch {}
+    this.initialized = true;
   }
 
   private save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.root));
+    saveOsData('vfs', this.root);
     this.listeners.forEach(fn => fn());
   }
 
@@ -122,13 +139,8 @@ class VirtualFS {
     return { parent, name };
   }
 
-  exists(path: string): boolean {
-    return this.getNode(path) !== null;
-  }
-
-  stat(path: string): FSNode | null {
-    return this.getNode(path);
-  }
+  exists(path: string): boolean { return this.getNode(path) !== null; }
+  stat(path: string): FSNode | null { return this.getNode(path); }
 
   readFile(path: string): string | null {
     const node = this.getNode(path);
@@ -145,7 +157,6 @@ class VirtualFS {
       this.save();
       return true;
     }
-    // Create new file
     const info = this.getParent(path);
     if (!info) return false;
     info.parent.children![info.name] = createFile(info.name, content);
@@ -170,9 +181,7 @@ class VirtualFS {
     return Object.values(node.children);
   }
 
-  ls(path: string): string[] {
-    return this.readDir(path).map(n => n.name);
-  }
+  ls(path: string): string[] { return this.readDir(path).map(n => n.name); }
 
   rm(path: string): boolean {
     const info = this.getParent(path);
@@ -210,7 +219,6 @@ class VirtualFS {
     return this.rm(src);
   }
 
-  // Get total stats
   getStats(): { files: number; dirs: number; totalSize: number } {
     let files = 0, dirs = 0, totalSize = 0;
     const walk = (node: FSNode) => {
@@ -227,5 +235,4 @@ class VirtualFS {
   }
 }
 
-// Singleton
 export const vfs = new VirtualFS();
