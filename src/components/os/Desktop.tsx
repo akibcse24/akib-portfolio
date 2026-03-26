@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
 import AppIcon from './AppIcon';
-import Taskbar from './Taskbar';
 import StartMenu from './StartMenu';
 import Window from './Window';
 import AppBrowser from './AppBrowser';
@@ -8,7 +7,7 @@ import AppFileManager from './AppFileManager';
 import AppTerminal from './AppTerminal';
 import AppTextEditor from './AppTextEditor';
 import AppSettings, { wallpapers } from './AppSettings';
-import Dock from './Dock';
+import Taskbar from './Taskbar';
 import DesktopWidget from './DesktopWidget';
 import NotificationCenter, { useNotifications } from './NotificationCenter';
 import { osApps, OsApp } from '@/lib/os-apps';
@@ -20,6 +19,7 @@ const Desktop = () => {
   const [wallpaperIndex, setWallpaperIndex] = useState(0);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [snapPreview, setSnapPreview] = useState<'left' | 'right' | 'top' | null>(null);
+  const [taskbarRevealed, setTaskbarRevealed] = useState(false);
   const { notifications, addNotification, removeNotification } = useNotifications();
   const {
     windows, openWindow, closeWindow, focusWindow,
@@ -27,6 +27,10 @@ const Desktop = () => {
   } = useWindowManager();
 
   const desktopApps = osApps.filter(a => a.desktopShortcut);
+
+  // Determine if taskbar should auto-hide
+  const hasMaximizedWindow = windows.some(w => w.maximized && !w.minimized);
+  const taskbarHidden = hasMaximizedWindow && !taskbarRevealed;
 
   // Welcome notification
   useEffect(() => {
@@ -37,12 +41,10 @@ const Desktop = () => {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Super key → toggle start menu
       if (e.key === 'Meta' || e.key === 'OS') {
         e.preventDefault();
         setStartMenuOpen(prev => !prev);
       }
-      // Alt+F4 → close focused window
       if (e.altKey && e.key === 'F4') {
         e.preventDefault();
         if (windows.length > 0) {
@@ -50,16 +52,14 @@ const Desktop = () => {
           if (topWin) closeWindow(topWin.id);
         }
       }
-      // Alt+Tab → focus next window
       if (e.altKey && e.key === 'Tab') {
         e.preventDefault();
         if (windows.length > 1) {
           const sorted = [...windows].sort((a, b) => b.zIndex - a.zIndex);
-          const nextWin = sorted[sorted.length - 1]; // least-focused
+          const nextWin = sorted[sorted.length - 1];
           focusWindow(nextWin.id);
         }
       }
-      // Escape → close context menu/start menu
       if (e.key === 'Escape') {
         setContextMenu(null);
         setStartMenuOpen(false);
@@ -68,6 +68,11 @@ const Desktop = () => {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [windows, closeWindow, focusWindow]);
+
+  // Reset taskbar reveal when no maximized windows
+  useEffect(() => {
+    if (!hasMaximizedWindow) setTaskbarRevealed(false);
+  }, [hasMaximizedWindow]);
 
   const launchApp = useCallback((app: OsApp) => {
     playClickSound();
@@ -111,7 +116,6 @@ const Desktop = () => {
     >
       {/* Desktop area */}
       <div className="flex-1 relative overflow-hidden">
-        {/* Desktop widget */}
         <DesktopWidget />
 
         {/* Desktop icons */}
@@ -136,9 +140,9 @@ const Desktop = () => {
             style={{
               background: 'hsla(217, 91%, 60%, 0.15)',
               border: '2px solid hsla(217, 91%, 60%, 0.4)',
-              ...(snapPreview === 'left' ? { top: 0, left: 0, width: '50%', height: 'calc(100% - 48px)' } :
-                snapPreview === 'right' ? { top: 0, right: 0, width: '50%', height: 'calc(100% - 48px)' } :
-                { top: 0, left: 0, width: '100%', height: 'calc(100% - 48px)' }),
+              ...(snapPreview === 'left' ? { top: 0, left: 0, width: '50%', height: '100%' } :
+                snapPreview === 'right' ? { top: 0, right: 0, width: '50%', height: '100%' } :
+                { top: 0, left: 0, width: '100%', height: '100%' }),
             }}
           />
         )}
@@ -148,6 +152,7 @@ const Desktop = () => {
           <Window
             key={win.id}
             win={win}
+            taskbarHidden={taskbarHidden}
             onClose={() => closeWindow(win.id)}
             onMinimize={() => minimizeWindow(win.id)}
             onMaximize={() => maximizeWindow(win.id)}
@@ -202,12 +207,9 @@ const Desktop = () => {
           onClose={() => setStartMenuOpen(false)}
           onLaunchApp={launchApp}
         />
-
-        {/* Dock */}
-        <Dock onLaunchApp={(app) => { setStartMenuOpen(false); launchApp(app); }} />
       </div>
 
-      {/* Taskbar */}
+      {/* Taskbar with integrated dock */}
       <Taskbar
         windows={windows}
         onWindowFocus={focusWindow}
@@ -215,6 +217,9 @@ const Desktop = () => {
         startMenuOpen={startMenuOpen}
         notifications={notifications}
         onRemoveNotification={removeNotification}
+        onLaunchApp={(app) => { setStartMenuOpen(false); launchApp(app); }}
+        hidden={taskbarHidden}
+        onReveal={setTaskbarRevealed}
       />
     </div>
   );
