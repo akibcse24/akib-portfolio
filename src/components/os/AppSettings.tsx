@@ -1,12 +1,24 @@
 import { useState } from 'react';
 import { Monitor, Palette, Info } from 'lucide-react';
 
-const wallpapers = [
-  { name: 'Deep Space', from: '220, 60%, 8%', to: '240, 50%, 15%' },
-  { name: 'Ocean', from: '200, 60%, 10%', to: '210, 70%, 25%' },
-  { name: 'Sunset', from: '350, 50%, 12%', to: '20, 60%, 20%' },
-  { name: 'Forest', from: '140, 40%, 8%', to: '160, 50%, 18%' },
-  { name: 'Midnight', from: '260, 50%, 6%', to: '280, 40%, 14%' },
+export interface Wallpaper {
+  name: string;
+  type: 'gradient' | 'image';
+  from?: string;
+  to?: string;
+  image?: string;
+}
+
+const wallpapers: Wallpaper[] = [
+  { name: 'Plasma Flow', type: 'image', image: '/wallpapers/plasma-flow.jpg' },
+  { name: 'Nebula', type: 'image', image: '/wallpapers/plasma-nebula.jpg' },
+  { name: 'Ember', type: 'image', image: '/wallpapers/plasma-ember.jpg' },
+  { name: 'Aurora', type: 'image', image: '/wallpapers/plasma-aurora.jpg' },
+  { name: 'Deep Ocean', type: 'image', image: '/wallpapers/plasma-ocean.jpg' },
+  { name: 'Deep Space', type: 'gradient', from: '220, 60%, 8%', to: '240, 50%, 15%' },
+  { name: 'Sunset', type: 'gradient', from: '350, 50%, 12%', to: '20, 60%, 20%' },
+  { name: 'Forest', type: 'gradient', from: '140, 40%, 8%', to: '160, 50%, 18%' },
+  { name: 'Midnight', type: 'gradient', from: '260, 50%, 6%', to: '280, 40%, 14%' },
 ];
 
 interface AppSettingsProps {
@@ -47,10 +59,13 @@ const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) =>
                 <button
                   key={i}
                   onClick={() => onWallpaperChange(i)}
-                  className={`h-16 rounded-lg border-2 transition-all ${i === wallpaperIndex ? 'border-os-accent shadow-lg' : 'border-transparent hover:border-white/20'}`}
-                  style={{ background: `linear-gradient(135deg, hsl(${wp.from}), hsl(${wp.to}))` }}
+                  className={`h-16 rounded-lg border-2 transition-all overflow-hidden ${i === wallpaperIndex ? 'border-os-accent shadow-lg' : 'border-transparent hover:border-white/20'}`}
+                  style={wp.type === 'image'
+                    ? { backgroundImage: `url(${wp.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                    : { background: `linear-gradient(135deg, hsl(${wp.from}), hsl(${wp.to}))` }
+                  }
                 >
-                  <span className="text-[9px] text-white/70">{wp.name}</span>
+                  <span className="text-[9px] text-white/70 drop-shadow-md">{wp.name}</span>
                 </button>
               ))}
             </div>
