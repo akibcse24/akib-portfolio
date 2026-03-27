@@ -225,20 +225,38 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
               {error}
             </div>
           )}
+
+          {/* Guest button inside auth area */}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleUnlock(); }}
+            className="mt-2 text-xs transition-all hover:scale-105"
+            style={{ color: 'hsl(220, 15%, 55%)' }}
+          >
+            Continue as Guest →
+          </button>
         </div>
       ) : (
-        <button
-          onClick={(e) => { e.stopPropagation(); setShowInput(true); }}
-          className="relative z-10 px-8 py-2.5 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105"
-          style={{
-            background: 'hsla(217, 91%, 60%, 0.2)',
-            border: '1px solid hsla(217, 91%, 60%, 0.4)',
-            color: 'hsl(217, 91%, 75%)',
-            backdropFilter: 'blur(10px)',
-          }}
-        >
-          Click to Login
-        </button>
+        <div className="relative z-10 flex flex-col items-center gap-3">
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowInput(true); }}
+            className="px-8 py-2.5 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105"
+            style={{
+              background: 'hsla(217, 91%, 60%, 0.2)',
+              border: '1px solid hsla(217, 91%, 60%, 0.4)',
+              color: 'hsl(217, 91%, 75%)',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            Click to Login
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleUnlock(); }}
+            className="text-xs transition-all hover:scale-105"
+            style={{ color: 'hsl(220, 15%, 50%)' }}
+          >
+            Continue as Guest →
+          </button>
+        </div>
       )}
 
       {!showInput && (
