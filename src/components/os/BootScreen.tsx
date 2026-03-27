@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { playBootChime } from '@/lib/sounds';
+import logoImg from '@/assets/logo.png';
 
 interface BootScreenProps {
   onBootComplete: () => void;
