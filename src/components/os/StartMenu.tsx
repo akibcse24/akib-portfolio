@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { icons, Search, Power, Lock, RotateCw } from 'lucide-react';
 import { osApps, OsApp } from '@/lib/os-apps';
+import { accountKey } from '@/lib/session-context';
 
 interface StartMenuProps {
   open: boolean;
@@ -14,7 +15,7 @@ const pinnedAppIds = ['ctxnote', 'routine-tracker', 'hisabkhata', 'browser', 'fi
 const StartMenu = ({ open, onClose, onLaunchApp, onLockScreen }: StartMenuProps) => {
   const [search, setSearch] = useState('');
   const [recentAppIds, setRecentAppIds] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem('akibos-recent-apps') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(accountKey('recent-apps')) || '[]'); } catch { return []; }
   });
 
   if (!open) return null;
@@ -31,7 +32,7 @@ const StartMenu = ({ open, onClose, onLaunchApp, onLockScreen }: StartMenuProps)
     // Track recent
     const newRecent = [app.id, ...recentAppIds.filter(id => id !== app.id)].slice(0, 5);
     setRecentAppIds(newRecent);
-    localStorage.setItem('akibos-recent-apps', JSON.stringify(newRecent));
+    localStorage.setItem(accountKey('recent-apps'), JSON.stringify(newRecent));
     onLaunchApp(app);
     onClose();
   };
