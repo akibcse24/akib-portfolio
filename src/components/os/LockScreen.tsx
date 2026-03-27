@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Lock, Hash, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { User, UserCircle, Lock, Hash, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 interface LockScreenProps {
   onUnlock: (account: 'akib' | 'guest') => void;
