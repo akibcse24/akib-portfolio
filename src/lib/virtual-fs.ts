@@ -1,6 +1,8 @@
 // Virtual Filesystem — localStorage-backed with Supabase sync
+// Scoped per user account (akib vs guest)
 
 import { saveOsData, loadOrFallback } from './os-persistence';
+import { accountKey } from './session-context';
 
 export interface FSNode {
   name: string;
@@ -11,8 +13,6 @@ export interface FSNode {
   modifiedAt: number;
   children?: Record<string, FSNode>;
 }
-
-const STORAGE_KEY = 'akibos-vfs';
 
 function createDir(name: string): FSNode {
   const now = Date.now();
@@ -30,8 +30,8 @@ function buildDefaultFS(): FSNode {
     home: {
       ...createDir('home'),
       children: {
-        akib: {
-          ...createDir('akib'),
+        user: {
+          ...createDir('user'),
           children: {
             Documents: {
               ...createDir('Documents'),
@@ -49,7 +49,7 @@ function buildDefaultFS(): FSNode {
             },
             Downloads: { ...createDir('Downloads'), children: {} },
             Desktop: { ...createDir('Desktop'), children: {} },
-            '.bashrc': createFile('.bashrc', '# AkibOS Shell Config\nexport PS1="akib@akibos:~$ "\nalias ll="ls -la"\n'),
+            '.bashrc': createFile('.bashrc', '# AkibOS Shell Config\nexport PS1="user@akibos:~$ "\nalias ll="ls -la"\n'),
             '.config': {
               ...createDir('.config'),
               children: {
@@ -78,12 +78,19 @@ class VirtualFS {
   private initialized = false;
 
   constructor() {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    this.root = buildDefaultFS();
+  }
+
+  /** Re-initialize from the current account's storage */
+  init() {
+    const storageKey = accountKey('vfs');
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try { this.root = JSON.parse(saved); } catch { this.root = buildDefaultFS(); }
     } else {
       this.root = buildDefaultFS();
     }
+    this.listeners.forEach(fn => fn());
     // Async load from backend
     this.initFromBackend();
   }
@@ -93,7 +100,8 @@ class VirtualFS {
       const remote = await loadOrFallback('vfs', null);
       if (remote) {
         this.root = remote;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.root));
+        const storageKey = accountKey('vfs');
+        localStorage.setItem(storageKey, JSON.stringify(this.root));
         this.listeners.forEach(fn => fn());
       } else {
         // First time — push to backend
@@ -104,7 +112,8 @@ class VirtualFS {
   }
 
   private save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.root));
+    const storageKey = accountKey('vfs');
+    localStorage.setItem(storageKey, JSON.stringify(this.root));
     saveOsData('vfs', this.root);
     this.listeners.forEach(fn => fn());
   }
@@ -236,3 +245,8 @@ class VirtualFS {
 }
 
 export const vfs = new VirtualFS();
+
+/** Re-initialize VFS for the current account (call after setCurrentAccount) */
+export function reinitVFS() {
+  vfs.init();
+}
