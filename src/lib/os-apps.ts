@@ -36,7 +36,7 @@ export const osApps: OsApp[] = [
     url: 'https://rt.akib.qzz.io',
     description: 'Premium Routine Tracking',
     desktopShortcut: true,
-    iframeBlocked: true,
+    
   },
   {
     id: 'hisabkhata',
