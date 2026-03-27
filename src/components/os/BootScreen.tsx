@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { playBootChime } from '@/lib/sounds';
+import logoImg from '@/assets/logo.png';
 
 interface BootScreenProps {
   onBootComplete: () => void;
@@ -68,19 +69,7 @@ const BootScreen = ({ onBootComplete }: BootScreenProps) => {
       {/* Logo */}
       <div className="animate-boot-in flex flex-col items-center gap-6 z-10">
         <div className="animate-boot-pulse">
-          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-            <defs>
-              <linearGradient id="logoGrad" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
-                <stop stopColor="hsl(217, 91%, 60%)" />
-                <stop offset="1" stopColor="hsl(260, 80%, 65%)" />
-              </linearGradient>
-            </defs>
-            <rect x="4" y="4" width="72" height="72" rx="18" fill="url(#logoGrad)" opacity="0.15" />
-            <rect x="10" y="10" width="60" height="60" rx="14" stroke="url(#logoGrad)" strokeWidth="2" fill="none" />
-            <text x="40" y="48" textAnchor="middle" fill="url(#logoGrad)" fontSize="24" fontWeight="700" fontFamily="Inter, sans-serif">
-              A
-            </text>
-          </svg>
+          <img src={logoImg} alt="AkibOS" className="w-20 h-20 rounded-2xl" />
         </div>
 
         <h1 className="text-2xl font-semibold tracking-wider" style={{ color: 'hsl(217, 91%, 70%)' }}>
