@@ -185,7 +185,7 @@ const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
       newBookmarks = [...bookmarks, { url, title }];
     }
     setBookmarks(newBookmarks);
-    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(newBookmarks));
+    localStorage.setItem(getBookmarksKey(), JSON.stringify(newBookmarks));
   };
 
   const isBookmarked = bookmarks.some(b => b.url === activeTab?.url);
@@ -312,7 +312,7 @@ const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
           onChange={(e) => {
             const eng = e.target.value as SearchEngine;
             setSearchEngine(eng);
-            localStorage.setItem(SEARCH_ENGINE_KEY, eng);
+            localStorage.setItem(getSearchEngineKey(), eng);
           }}
           className="h-7 px-1 rounded text-[10px] bg-transparent text-os-window-chrome-foreground border border-os-panel-border outline-none cursor-pointer hover:bg-white/10"
           title="Search engine"
