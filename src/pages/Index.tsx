@@ -3,6 +3,8 @@ import BootScreen from '@/components/os/BootScreen';
 import LockScreen from '@/components/os/LockScreen';
 import Desktop from '@/components/os/Desktop';
 import { loadOrFallback } from '@/lib/os-persistence';
+import { setCurrentAccount, type AccountType } from '@/lib/session-context';
+import { reinitVFS } from '@/lib/virtual-fs';
 
 const Index = () => {
   const [phase, setPhase] = useState<'boot' | 'lock' | 'desktop'>('boot');
@@ -11,7 +13,9 @@ const Index = () => {
     setPhase('lock');
   }, []);
 
-  const handleUnlock = useCallback(() => {
+  const handleUnlock = useCallback((account: AccountType) => {
+    setCurrentAccount(account);
+    reinitVFS(); // Re-initialize VFS for the current account
     setPhase('desktop');
     try {
       document.documentElement.requestFullscreen?.();
