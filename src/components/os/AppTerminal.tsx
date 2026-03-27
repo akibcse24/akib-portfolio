@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { vfs } from '@/lib/virtual-fs';
 import { eventBus, OS_EVENTS } from '@/lib/event-bus';
+import { getCurrentAccount } from '@/lib/session-context';
 
 const MOTD = `AkibOS Terminal v1.0
 Type 'help' for available commands.\n`;
