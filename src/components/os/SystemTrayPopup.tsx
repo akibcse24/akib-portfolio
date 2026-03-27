@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Wifi, WifiOff, Volume2, VolumeX, Battery, BatteryCharging } from 'lucide-react';
+import { accountKey } from '@/lib/session-context';
 
 interface SystemTrayPopupProps {
   type: 'volume' | 'wifi' | 'battery';
@@ -7,9 +8,9 @@ interface SystemTrayPopupProps {
 }
 
 const SystemTrayPopup = ({ type, onClose }: SystemTrayPopupProps) => {
-  const [volume, setVolume] = useState(() => parseInt(localStorage.getItem('akibos-volume') || '70'));
-  const [wifiOn, setWifiOn] = useState(() => localStorage.getItem('akibos-wifi') !== 'false');
-  const [batteryLevel, setBatteryLevel] = useState(() => parseInt(localStorage.getItem('akibos-battery') || '85'));
+  const [volume, setVolume] = useState(() => parseInt(localStorage.getItem(accountKey('volume')) || '70'));
+  const [wifiOn, setWifiOn] = useState(() => localStorage.getItem(accountKey('wifi')) !== 'false');
+  const [batteryLevel, setBatteryLevel] = useState(() => parseInt(localStorage.getItem(accountKey('battery')) || '85'));
   const [charging, setCharging] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -27,7 +28,7 @@ const SystemTrayPopup = ({ type, onClose }: SystemTrayPopupProps) => {
     const interval = setInterval(() => {
       setBatteryLevel(prev => {
         const next = charging ? Math.min(100, prev + 1) : Math.max(5, prev - 1);
-        localStorage.setItem('akibos-battery', String(next));
+        localStorage.setItem(accountKey('battery'), String(next));
         return next;
       });
     }, 3000);
@@ -36,13 +37,13 @@ const SystemTrayPopup = ({ type, onClose }: SystemTrayPopupProps) => {
 
   const handleVolumeChange = (v: number) => {
     setVolume(v);
-    localStorage.setItem('akibos-volume', String(v));
+    localStorage.setItem(accountKey('volume'), String(v));
   };
 
   const handleWifiToggle = () => {
     const next = !wifiOn;
     setWifiOn(next);
-    localStorage.setItem('akibos-wifi', String(next));
+    localStorage.setItem(accountKey('wifi'), String(next));
   };
 
   return (

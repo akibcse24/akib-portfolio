@@ -3,6 +3,8 @@ import BootScreen from '@/components/os/BootScreen';
 import LockScreen from '@/components/os/LockScreen';
 import Desktop from '@/components/os/Desktop';
 import { loadOrFallback } from '@/lib/os-persistence';
+import { setCurrentAccount, accountKey, type AccountType } from '@/lib/session-context';
+import { reinitVFS } from '@/lib/virtual-fs';
 
 const Index = () => {
   const [phase, setPhase] = useState<'boot' | 'lock' | 'desktop'>('boot');
@@ -11,7 +13,9 @@ const Index = () => {
     setPhase('lock');
   }, []);
 
-  const handleUnlock = useCallback(() => {
+  const handleUnlock = useCallback((account: AccountType) => {
+    setCurrentAccount(account);
+    reinitVFS(); // Re-initialize VFS for the current account
     setPhase('desktop');
     try {
       document.documentElement.requestFullscreen?.();
@@ -39,9 +43,8 @@ const Index = () => {
     (async () => {
       const settings = await loadOrFallback('settings', null);
       if (settings) {
-        if (settings.username) localStorage.setItem('akibos-username', settings.username);
         if (settings.accentHue !== undefined) {
-          localStorage.setItem('akibos-accent-hue', String(settings.accentHue));
+          localStorage.setItem(accountKey('accent-hue'), String(settings.accentHue));
           document.documentElement.style.setProperty('--os-accent-hue', String(settings.accentHue));
         }
       }

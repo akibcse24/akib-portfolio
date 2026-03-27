@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, RotateCw, Lock, Star, ExternalLink, AlertTriangle, Shield, ShieldOff, Home, Plus, X, Search, BookmarkPlus, Bookmark } from 'lucide-react';
 import { osApps } from '@/lib/os-apps';
 import { supabase } from '@/integrations/supabase/client';
+import { accountKey } from '@/lib/session-context';
 
 interface BrowserTab {
   id: string;
@@ -19,14 +20,14 @@ const SEARCH_ENGINES: Record<SearchEngine, { name: string; url: string; searchUr
   google: { name: 'Google', url: 'https://www.google.com', searchUrl: 'https://www.google.com/search?q=' },
   duckduckgo: { name: 'DuckDuckGo', url: 'https://duckduckgo.com', searchUrl: 'https://duckduckgo.com/?q=' },
 };
-const SEARCH_ENGINE_KEY = 'akibos-search-engine';
-const BOOKMARKS_KEY = 'akibos-browser-bookmarks';
+const getSearchEngineKey = () => accountKey('search-engine');
+const getBookmarksKey = () => accountKey('browser-bookmarks');
 
 let tabCounter = 0;
 
 const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
   const [searchEngine, setSearchEngine] = useState<SearchEngine>(() => {
-    return (localStorage.getItem(SEARCH_ENGINE_KEY) as SearchEngine) || 'duckduckgo';
+    return (localStorage.getItem(getSearchEngineKey()) as SearchEngine) || 'duckduckgo';
   });
   const homepage = SEARCH_ENGINES[searchEngine].url;
   const effectiveInitial = initialUrl || homepage;
@@ -42,7 +43,7 @@ const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
   const [proxyHtml, setProxyHtml] = useState<string | null>(null);
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [bookmarks, setBookmarks] = useState<{ url: string; title: string }[]>(() => {
-    try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(getBookmarksKey()) || '[]'); } catch { return []; }
   });
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -184,7 +185,7 @@ const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
       newBookmarks = [...bookmarks, { url, title }];
     }
     setBookmarks(newBookmarks);
-    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(newBookmarks));
+    localStorage.setItem(getBookmarksKey(), JSON.stringify(newBookmarks));
   };
 
   const isBookmarked = bookmarks.some(b => b.url === activeTab?.url);
@@ -311,7 +312,7 @@ const AppBrowser = ({ initialUrl }: AppBrowserProps) => {
           onChange={(e) => {
             const eng = e.target.value as SearchEngine;
             setSearchEngine(eng);
-            localStorage.setItem(SEARCH_ENGINE_KEY, eng);
+            localStorage.setItem(getSearchEngineKey(), eng);
           }}
           className="h-7 px-1 rounded text-[10px] bg-transparent text-os-window-chrome-foreground border border-os-panel-border outline-none cursor-pointer hover:bg-white/10"
           title="Search engine"

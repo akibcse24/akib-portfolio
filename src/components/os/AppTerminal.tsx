@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { vfs } from '@/lib/virtual-fs';
 import { eventBus, OS_EVENTS } from '@/lib/event-bus';
+import { getCurrentAccount } from '@/lib/session-context';
 
 const MOTD = `AkibOS Terminal v1.0
 Type 'help' for available commands.\n`;
@@ -170,7 +171,7 @@ const AppTerminal = () => {
         break;
 
       case 'whoami': {
-        const name = localStorage.getItem('akibos-username') || 'akib';
+        const name = getCurrentAccount();
         output = name;
         break;
       }
@@ -185,7 +186,7 @@ const AppTerminal = () => {
 
       case 'neofetch':
         output = `
-       ___       ${localStorage.getItem('akibos-username') || 'akib'}@akibos
+       ___       ${getCurrentAccount()}@akibos
       /   \\      OS: AkibOS 1.0
      / A   \\     Kernel: web-5.0
     /  kib   \\   Shell: akibsh 1.0
@@ -215,8 +216,8 @@ const AppTerminal = () => {
 
   const handleSubmit = () => {
     const trimmed = input.trim();
-    const username = localStorage.getItem('akibos-username') || 'akib';
-    const prompt = `${username}@akibos:${cwd === '/home/akib' ? '~' : cwd}$ ${trimmed}`;
+    const username = getCurrentAccount();
+    const prompt = `${username}@akibos:${cwd === '/home/user' ? '~' : cwd}$ ${trimmed}`;
 
     if (!trimmed) {
       setLines(prev => [...prev, prompt]);
@@ -252,8 +253,8 @@ const AppTerminal = () => {
             : completions[0];
           setInput(parts.join(' '));
         } else if (completions.length > 1) {
-          const username = localStorage.getItem('akibos-username') || 'akib';
-          setLines(prev => [...prev, `${username}@akibos:${cwd === '/home/akib' ? '~' : cwd}$ ${input}`, completions.join('  ')]);
+          const username = getCurrentAccount();
+          setLines(prev => [...prev, `${username}@akibos:${cwd === '/home/user' ? '~' : cwd}$ ${input}`, completions.join('  ')]);
         }
       }
     } else if (e.key === 'ArrowUp') {
@@ -273,7 +274,7 @@ const AppTerminal = () => {
     }
   };
 
-  const username = localStorage.getItem('akibos-username') || 'akib';
+  const username = getCurrentAccount();
 
   return (
     <div

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Monitor, Palette, Info, User, HardDrive, Keyboard } from 'lucide-react';
 import { vfs } from '@/lib/virtual-fs';
 import { saveOsData } from '@/lib/os-persistence';
+import { accountKey, getCurrentAccount } from '@/lib/session-context';
 
 export interface Wallpaper {
   name: string;
@@ -31,18 +32,18 @@ interface AppSettingsProps {
 
 const AppSettings = ({ wallpaperIndex, onWallpaperChange }: AppSettingsProps) => {
   const [tab, setTab] = useState<'display' | 'user' | 'storage' | 'shortcuts' | 'about'>('display');
-  const [username, setUsername] = useState(() => localStorage.getItem('akibos-username') || 'Akib');
-  const [accentHue, setAccentHue] = useState(() => parseInt(localStorage.getItem('akibos-accent-hue') || '217'));
+  const [username, setUsername] = useState(() => getCurrentAccount() === 'guest' ? 'Guest' : (localStorage.getItem(accountKey('username')) || 'Akib'));
+  const [accentHue, setAccentHue] = useState(() => parseInt(localStorage.getItem(accountKey('accent-hue')) || '217'));
 
   const handleUsernameChange = (name: string) => {
     setUsername(name);
-    localStorage.setItem('akibos-username', name);
+    localStorage.setItem(accountKey('username'), name);
     saveOsData('settings', { username: name, accentHue, wallpaperIndex });
   };
 
   const handleAccentChange = (hue: number) => {
     setAccentHue(hue);
-    localStorage.setItem('akibos-accent-hue', String(hue));
+    localStorage.setItem(accountKey('accent-hue'), String(hue));
     document.documentElement.style.setProperty('--os-accent-hue', String(hue));
     saveOsData('settings', { username, accentHue: hue, wallpaperIndex });
   };

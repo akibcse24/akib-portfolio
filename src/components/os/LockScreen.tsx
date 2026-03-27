@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Lock, Hash, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { User, UserCircle, Lock, Hash, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 interface LockScreenProps {
-  onUnlock: () => void;
+  onUnlock: (account: 'akib' | 'guest') => void;
 }
 
 const OS_PASSWORD = 'akib-ctx';
@@ -37,9 +37,9 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
     }
   }, [showInput, authMode]);
 
-  const handleUnlock = () => {
+  const handleUnlock = (account: 'akib' | 'guest' = 'akib') => {
     setFadeOut(true);
-    setTimeout(onUnlock, 500);
+    setTimeout(() => onUnlock(account), 500);
   };
 
   const triggerShake = () => {
@@ -50,7 +50,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === OS_PASSWORD) {
-      handleUnlock();
+      handleUnlock('akib');
     } else {
       setError('Incorrect password');
       setPassword('');
@@ -71,7 +71,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
     // Auto-submit when all 4 digits entered
     if (newPin.length === 4 && index === 3) {
       if (newPin === OS_PIN) {
-        handleUnlock();
+        handleUnlock('akib');
       } else {
         setError('Incorrect PIN');
         setPin('');
@@ -228,7 +228,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
 
           {/* Guest button inside auth area */}
           <button
-            onClick={(e) => { e.stopPropagation(); handleUnlock(); }}
+            onClick={(e) => { e.stopPropagation(); handleUnlock('guest'); }}
             className="mt-2 text-xs transition-all hover:scale-105"
             style={{ color: 'hsl(220, 15%, 55%)' }}
           >
@@ -250,7 +250,7 @@ const LockScreen = ({ onUnlock }: LockScreenProps) => {
             Click to Login
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); handleUnlock(); }}
+            onClick={(e) => { e.stopPropagation(); handleUnlock('guest'); }}
             className="text-xs transition-all hover:scale-105"
             style={{ color: 'hsl(220, 15%, 50%)' }}
           >
